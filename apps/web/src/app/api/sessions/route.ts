@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { nanoid } from 'nanoid';
 import { SnapshotV1Schema } from '@gitguard/schema';
-import { createSession, createSnapshot, createTrace } from '@/lib/db';
+import { createSession, createSnapshot, saveTrace } from '@/lib/db';
 import { collectSignals } from '@/lib/agent';
+import { auth } from '@/lib/auth';
 import { createHash } from 'crypto';
 
 export async function POST(request: NextRequest) {
@@ -13,9 +13,9 @@ export async function POST(request: NextRequest) {
     // Validate snapshot
     const snapshot = SnapshotV1Schema.parse(rawSnapshot);
 
-    // Generate IDs
-    const sessionId = nanoid();
-    const snapshotId = nanoid();
+    // Get current user (optional - uploads can be anonymous)
+    const session = await auth();
+    const userId = session?.user?.id || null;
 
     // Create hash of repo root for deduplication
     const repoRootHash = createHash('sha256')
@@ -26,18 +26,26 @@ export async function POST(request: NextRequest) {
     // Generate title from branch and issue
     const title = generateTitle(snapshot);
 
-    // Create session
-    createSession(sessionId, title, snapshot.platform, repoRootHash);
+    // Create session in database
+    const gitSession = await createSession({
+      title,
+      os: snapshot.platform,
+      repoRootHash,
+      userId,
+    });
 
     // Save snapshot
-    createSnapshot(snapshotId, sessionId, JSON.stringify(snapshot));
+    const snapshotRecord = await createSnapshot({
+      gitSessionId: gitSession.id,
+      snapshotJson: snapshot,
+    });
 
     // Run collector and save trace
+    const startTime = Date.now();
     const signals = collectSignals(snapshot);
-    const traceId = nanoid();
-    createTrace(traceId, sessionId, 'collector', snapshotId, JSON.stringify(signals));
+    await saveTrace(gitSession.id, 'collector', snapshotRecord.id, signals, startTime);
 
-    return NextResponse.json({ sessionId });
+    return NextResponse.json({ sessionId: gitSession.id });
   } catch (error) {
     console.error('Error creating session:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -45,7 +53,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function generateTitle(snapshot: { branch: { head: string }; isDetachedHead: boolean; unmergedFiles: unknown[]; rebaseState: { inProgress: boolean } }): string {
+function generateTitle(snapshot: {
+  branch: { head: string };
+  isDetachedHead: boolean;
+  unmergedFiles: unknown[];
+  rebaseState: { inProgress: boolean };
+}): string {
   const parts: string[] = [];
 
   if (snapshot.unmergedFiles.length > 0) {

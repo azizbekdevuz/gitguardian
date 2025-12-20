@@ -12,17 +12,19 @@ export async function POST(
     const body = await request.json();
     const { type, fileIndex, blockIndex } = body;
 
-    const session = getSession(sessionId);
+    const session = await getSession(sessionId);
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
-    const snapshotRow = getLatestSnapshot(sessionId);
-    if (!snapshotRow) {
+    const snapshotRecord = await getLatestSnapshot(sessionId);
+    if (!snapshotRecord) {
       return NextResponse.json({ error: 'Snapshot not found' }, { status: 404 });
     }
 
-    const snapshot = SnapshotV1Schema.parse(JSON.parse(snapshotRow.snapshot_json));
+    const snapshot = SnapshotV1Schema.parse(snapshotRecord.snapshotJson);
+
+    const explainerStart = Date.now();
 
     if (type === 'conflict') {
       // Explain a specific conflict block
@@ -43,7 +45,7 @@ export async function POST(
       const explanation = await explainConflict(file, block, blockIndex, snapshot);
 
       // Save trace for SpoonOS visualization
-      saveTrace(sessionId, 'visual_explainer', snapshotRow.id, explanation);
+      await saveTrace(sessionId, 'visual_explainer', snapshotRecord.id, explanation, explainerStart);
 
       return NextResponse.json({ explanation });
     } else if (type === 'state') {
@@ -51,7 +53,7 @@ export async function POST(
       const explanation = await explainState(snapshot);
 
       // Save trace for SpoonOS visualization
-      saveTrace(sessionId, 'visual_explainer', snapshotRow.id, explanation);
+      await saveTrace(sessionId, 'visual_explainer', snapshotRecord.id, explanation, explainerStart);
 
       return NextResponse.json({ explanation });
     } else {

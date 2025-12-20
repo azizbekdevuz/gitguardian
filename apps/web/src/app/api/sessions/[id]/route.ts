@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SnapshotV1Schema, type PlanV1, type Signals } from '@gitguard/schema';
-import { getSession, getLatestSnapshot, getLatestPlan, getTraces } from '@/lib/db';
+import { getSessionWithDetails } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
@@ -9,42 +9,42 @@ export async function GET(
   try {
     const { id: sessionId } = await params;
 
-    const session = getSession(sessionId);
-    if (!session) {
+    const sessionData = await getSessionWithDetails(sessionId);
+    if (!sessionData) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
-    const snapshotRow = getLatestSnapshot(sessionId);
-    if (!snapshotRow) {
+    const latestSnapshot = sessionData.snapshots[0];
+    if (!latestSnapshot) {
       return NextResponse.json({ error: 'Snapshot not found' }, { status: 404 });
     }
 
-    const snapshot = SnapshotV1Schema.parse(JSON.parse(snapshotRow.snapshot_json));
+    const snapshot = SnapshotV1Schema.parse(latestSnapshot.snapshotJson);
 
-    const planRow = getLatestPlan(sessionId);
-    let plan: PlanV1 | null = null;
-    if (planRow) {
-      plan = JSON.parse(planRow.plan_json) as PlanV1;
-    }
+    const latestPlan = sessionData.plans[0];
+    const plan: PlanV1 | null = latestPlan
+      ? (latestPlan.planJson as PlanV1)
+      : null;
 
-    const traceRows = getTraces(sessionId);
-    const traces = traceRows.map(t => ({
+    const traces = sessionData.traces.map((t) => ({
       stage: t.stage,
-      output: JSON.parse(t.output_json),
+      output: t.outputJson,
+      createdAt: t.createdAt.toISOString(),
+      durationMs: t.durationMs,
     }));
 
     // Get signals from collector trace
     let signals: Signals | null = null;
-    const collectorTrace = traceRows.find(t => t.stage === 'collector');
+    const collectorTrace = sessionData.traces.find((t) => t.stage === 'collector');
     if (collectorTrace) {
-      signals = JSON.parse(collectorTrace.output_json) as Signals;
+      signals = collectorTrace.outputJson as Signals;
     }
 
     return NextResponse.json({
       session: {
-        id: session.id,
-        title: session.title,
-        createdAt: session.created_at,
+        id: sessionData.id,
+        title: sessionData.title,
+        createdAt: sessionData.createdAt.toISOString(),
       },
       snapshot,
       signals,

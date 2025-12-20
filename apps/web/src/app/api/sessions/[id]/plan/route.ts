@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { nanoid } from 'nanoid';
 import { SnapshotV1Schema, type Signals } from '@gitguard/schema';
-import { getLatestSnapshot, getTraces, createPlan, createTrace } from '@/lib/db';
+import { getLatestSnapshot, getTraces, createPlan, saveTrace } from '@/lib/db';
 import { classifyIssue, generatePlan } from '@/lib/agent';
 
 export async function POST(
@@ -12,26 +11,26 @@ export async function POST(
     const { id: sessionId } = await params;
 
     // Get snapshot
-    const snapshotRow = getLatestSnapshot(sessionId);
-    if (!snapshotRow) {
+    const snapshotRecord = await getLatestSnapshot(sessionId);
+    if (!snapshotRecord) {
       return NextResponse.json({ error: 'Snapshot not found' }, { status: 404 });
     }
 
-    const snapshot = SnapshotV1Schema.parse(JSON.parse(snapshotRow.snapshot_json));
+    const snapshot = SnapshotV1Schema.parse(snapshotRecord.snapshotJson);
 
     // Get signals from collector trace
-    const traceRows = getTraces(sessionId);
-    const collectorTrace = traceRows.find(t => t.stage === 'collector');
+    const traces = await getTraces(sessionId);
+    const collectorTrace = traces.find((t) => t.stage === 'collector');
     if (!collectorTrace) {
       return NextResponse.json({ error: 'No collector trace found' }, { status: 400 });
     }
 
-    const signals = JSON.parse(collectorTrace.output_json) as Signals;
+    const signals = collectorTrace.outputJson as Signals;
 
     // Run classifier
+    const classifierStart = Date.now();
     const classification = await classifyIssue(signals);
-    const classifierTraceId = nanoid();
-    createTrace(classifierTraceId, sessionId, 'classifier', null, JSON.stringify(classification));
+    await saveTrace(sessionId, 'classifier', null, classification, classifierStart);
 
     // Update signals with refined classification
     const refinedSignals: Signals = {
@@ -43,15 +42,20 @@ export async function POST(
 
     // Run planner
     const dangerousAllowed = false; // Could be passed from request body
+    const plannerStart = Date.now();
     const plan = await generatePlan(snapshot, refinedSignals, dangerousAllowed);
 
     // Save plan
-    const planId = nanoid();
-    createPlan(planId, sessionId, plan.issueType, plan.risk, JSON.stringify(plan), dangerousAllowed);
+    await createPlan({
+      gitSessionId: sessionId,
+      issueType: plan.issueType,
+      risk: plan.risk,
+      planJson: plan,
+      dangerousAllowed,
+    });
 
     // Save planner trace
-    const plannerTraceId = nanoid();
-    createTrace(plannerTraceId, sessionId, 'planner', null, JSON.stringify(plan));
+    await saveTrace(sessionId, 'planner', null, plan, plannerStart);
 
     return NextResponse.json({ plan });
   } catch (error) {

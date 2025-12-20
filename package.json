@@ -3,17 +3,24 @@
   "private": true,
   "scripts": {
     "build": "pnpm -r build",
-    "start": "pnpm --filter @gitguard/web start",
+    "build:web": "pnpm --filter @gitguard/web build",
+    "build:cli": "pnpm --filter @gitguard/cli build",
+    "start": "pnpm start:web & pnpm start:cli",
+    "start:web": "pnpm --filter @gitguard/web start",
+    "start:cli": "pnpm --filter @gitguard/cli start",
     "dev:web": "pnpm --filter @gitguard/web dev",
     "dev:cli": "pnpm --filter @gitguard/cli dev",
     "dev": "pnpm dev:web & pnpm dev:cli",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "pnpm --filter @gitguard/web db:generate",
+    "db:push": "pnpm --filter @gitguard/web db:push",
+    "db:studio": "pnpm --filter @gitguard/web db:studio"
   },
   "devDependencies": {
-    "typescript": "^5.3.3"
+    "typescript": "^5.7.2"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
-  "packageManager": "pnpm@10.15.0+sha512.486ebc259d3e999a4e8691ce03b5cac4a71cbeca39372a9b762cb500cfdf0873e2cb16abe3d951b1ee2cf012503f027b98b6584e4df22524e0c7450d9ec7aa7b"
+  "packageManager": "pnpm@9.15.0"
 }

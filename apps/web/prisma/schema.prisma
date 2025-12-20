@@ -1,0 +1,173 @@
+// Prisma schema for GitGuard Agent
+// Using Neon Postgres as the database
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+// ============================================
+// NextAuth.js Tables (Standard Schema)
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // For credentials provider
+
+  accounts      Account[]
+  sessions      Session[]
+  gitSessions   GitSession[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============================================
+// GitGuard Application Tables
+// ============================================
+
+model GitSession {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  title       String?
+  os          String?
+  repoRootHash String?
+
+  // Owner (nullable for anonymous/public uploads)
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Relations
+  snapshots   Snapshot[]
+  plans       Plan[]
+  traces      Trace[]
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Snapshot {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  gitSessionId String
+  gitSession   GitSession @relation(fields: [gitSessionId], references: [id], onDelete: Cascade)
+
+  // Snapshot data stored as JSONB
+  snapshotJson Json
+  truncated    Boolean  @default(false)
+
+  // Traces that reference this snapshot
+  traces       Trace[]
+
+  @@index([gitSessionId])
+  @@index([createdAt])
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  gitSessionId String
+  gitSession   GitSession @relation(fields: [gitSessionId], references: [id], onDelete: Cascade)
+
+  issueType   String?
+  risk        String?
+
+  // Plan data stored as JSONB
+  planJson    Json
+
+  dangerousAllowed Boolean @default(false)
+
+  @@index([gitSessionId])
+  @@index([createdAt])
+}
+
+model Trace {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  gitSessionId String
+  gitSession   GitSession @relation(fields: [gitSessionId], references: [id], onDelete: Cascade)
+
+  // SpoonOS stage identifier
+  stage       String   // collector, classifier, visual_explainer, planner, verifier
+
+  // Reference to input snapshot (optional)
+  snapshotId  String?
+  snapshot    Snapshot? @relation(fields: [snapshotId], references: [id], onDelete: SetNull)
+
+  // Output data stored as JSONB
+  outputJson  Json
+
+  // Execution metadata
+  durationMs  Int?
+  success     Boolean  @default(true)
+  errorMessage String?
+
+  @@index([gitSessionId])
+  @@index([stage])
+  @@index([createdAt])
+}
+
+// Optional: Event log for audit/analytics
+model Event {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  type        String   // session_created, plan_generated, conflict_explained, etc.
+  userId      String?
+  gitSessionId String?
+
+  metadata    Json?
+
+  @@index([type])
+  @@index([userId])
+  @@index([createdAt])
+}

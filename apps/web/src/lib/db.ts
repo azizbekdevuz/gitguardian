@@ -1,181 +1,227 @@
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { join } from 'path';
+/**
+ * Database operations using Prisma + Neon Postgres
+ *
+ * This module provides a clean API for database operations,
+ * abstracting Prisma details from the rest of the application.
+ */
 
-const DB_PATH = join(process.cwd(), 'gitguard-data.json');
+import prisma from './prisma';
+import type { GitSession, Snapshot, Plan, Trace } from '@prisma/client';
 
-interface DbData {
-  sessions: SessionRow[];
-  snapshots: SnapshotRow[];
-  plans: PlanRow[];
-  traces: TraceRow[];
+// Re-export types for convenience
+export type { GitSession, Snapshot, Plan, Trace };
+
+// ============================================
+// GitSession Operations
+// ============================================
+
+export interface CreateSessionInput {
+  title?: string | null;
+  os?: string | null;
+  repoRootHash?: string | null;
+  userId?: string | null;
 }
 
-function loadDb(): DbData {
-  if (!existsSync(DB_PATH)) {
-    return { sessions: [], snapshots: [], plans: [], traces: [] };
-  }
-  try {
-    const content = readFileSync(DB_PATH, 'utf-8');
-    return JSON.parse(content) as DbData;
-  } catch {
-    return { sessions: [], snapshots: [], plans: [], traces: [] };
-  }
-}
-
-function saveDb(data: DbData): void {
-  writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
-}
-
-// Session operations
-export interface SessionRow {
-  id: string;
-  created_at: string;
-  title: string | null;
-  os: string | null;
-  repo_root_hash: string | null;
-}
-
-export function createSession(
-  id: string,
-  title: string | null,
-  os: string | null,
-  repoRootHash: string | null
-): void {
-  const db = loadDb();
-  db.sessions.push({
-    id,
-    created_at: new Date().toISOString(),
-    title,
-    os,
-    repo_root_hash: repoRootHash,
+export async function createSession(input: CreateSessionInput): Promise<GitSession> {
+  return prisma.gitSession.create({
+    data: {
+      title: input.title,
+      os: input.os,
+      repoRootHash: input.repoRootHash,
+      userId: input.userId,
+    },
   });
-  saveDb(db);
 }
 
-export function getSession(id: string): SessionRow | undefined {
-  const db = loadDb();
-  return db.sessions.find(s => s.id === id);
-}
-
-// Snapshot operations
-export interface SnapshotRow {
-  id: string;
-  session_id: string;
-  created_at: string;
-  snapshot_json: string;
-  truncated: number;
-}
-
-export function createSnapshot(
-  id: string,
-  sessionId: string,
-  snapshotJson: string,
-  truncated: boolean = false
-): void {
-  const db = loadDb();
-  db.snapshots.push({
-    id,
-    session_id: sessionId,
-    created_at: new Date().toISOString(),
-    snapshot_json: snapshotJson,
-    truncated: truncated ? 1 : 0,
+export async function getSession(id: string): Promise<GitSession | null> {
+  return prisma.gitSession.findUnique({
+    where: { id },
   });
-  saveDb(db);
 }
 
-export function getLatestSnapshot(sessionId: string): SnapshotRow | undefined {
-  const db = loadDb();
-  const sessionSnapshots = db.snapshots
-    .filter(s => s.session_id === sessionId)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  return sessionSnapshots[0];
-}
-
-// Plan operations
-export interface PlanRow {
-  id: string;
-  session_id: string;
-  created_at: string;
-  issue_type: string | null;
-  risk: string | null;
-  plan_json: string;
-  dangerous_allowed: number;
-}
-
-export function createPlan(
-  id: string,
-  sessionId: string,
-  issueType: string | null,
-  risk: string | null,
-  planJson: string,
-  dangerousAllowed: boolean = false
-): void {
-  const db = loadDb();
-  db.plans.push({
-    id,
-    session_id: sessionId,
-    created_at: new Date().toISOString(),
-    issue_type: issueType,
-    risk,
-    plan_json: planJson,
-    dangerous_allowed: dangerousAllowed ? 1 : 0,
+export async function getSessionWithDetails(id: string) {
+  return prisma.gitSession.findUnique({
+    where: { id },
+    include: {
+      snapshots: {
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+      },
+      plans: {
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+      },
+      traces: {
+        orderBy: { createdAt: 'asc' },
+      },
+    },
   });
-  saveDb(db);
 }
 
-export function getLatestPlan(sessionId: string): PlanRow | undefined {
-  const db = loadDb();
-  const sessionPlans = db.plans
-    .filter(p => p.session_id === sessionId)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  return sessionPlans[0];
+export async function getUserSessions(userId: string) {
+  return prisma.gitSession.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      snapshots: {
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+      },
+      plans: {
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+      },
+    },
+  });
 }
 
-// Trace operations
-export interface TraceRow {
-  id: string;
-  session_id: string;
-  created_at: string;
+// ============================================
+// Snapshot Operations
+// ============================================
+
+export interface CreateSnapshotInput {
+  gitSessionId: string;
+  snapshotJson: unknown;
+  truncated?: boolean;
+}
+
+export async function createSnapshot(input: CreateSnapshotInput): Promise<Snapshot> {
+  return prisma.snapshot.create({
+    data: {
+      gitSessionId: input.gitSessionId,
+      snapshotJson: input.snapshotJson as object,
+      truncated: input.truncated ?? false,
+    },
+  });
+}
+
+export async function getLatestSnapshot(gitSessionId: string): Promise<Snapshot | null> {
+  return prisma.snapshot.findFirst({
+    where: { gitSessionId },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+// ============================================
+// Plan Operations
+// ============================================
+
+export interface CreatePlanInput {
+  gitSessionId: string;
+  issueType?: string | null;
+  risk?: string | null;
+  planJson: unknown;
+  dangerousAllowed?: boolean;
+}
+
+export async function createPlan(input: CreatePlanInput): Promise<Plan> {
+  return prisma.plan.create({
+    data: {
+      gitSessionId: input.gitSessionId,
+      issueType: input.issueType,
+      risk: input.risk,
+      planJson: input.planJson as object,
+      dangerousAllowed: input.dangerousAllowed ?? false,
+    },
+  });
+}
+
+export async function getLatestPlan(gitSessionId: string): Promise<Plan | null> {
+  return prisma.plan.findFirst({
+    where: { gitSessionId },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+// ============================================
+// Trace Operations (SpoonOS Pipeline)
+// ============================================
+
+export interface CreateTraceInput {
+  gitSessionId: string;
   stage: string;
-  input_ref: string | null;
-  output_json: string;
+  snapshotId?: string | null;
+  outputJson: unknown;
+  durationMs?: number | null;
+  success?: boolean;
+  errorMessage?: string | null;
 }
 
-export function createTrace(
-  id: string,
-  sessionId: string,
-  stage: string,
-  inputRef: string | null,
-  outputJson: string
-): void {
-  const db = loadDb();
-  db.traces.push({
-    id,
-    session_id: sessionId,
-    created_at: new Date().toISOString(),
-    stage,
-    input_ref: inputRef,
-    output_json: outputJson,
+export async function createTrace(input: CreateTraceInput): Promise<Trace> {
+  return prisma.trace.create({
+    data: {
+      gitSessionId: input.gitSessionId,
+      stage: input.stage,
+      snapshotId: input.snapshotId,
+      outputJson: input.outputJson as object,
+      durationMs: input.durationMs,
+      success: input.success ?? true,
+      errorMessage: input.errorMessage,
+    },
   });
-  saveDb(db);
 }
 
-export function getTraces(sessionId: string): TraceRow[] {
-  const db = loadDb();
-  return db.traces
-    .filter(t => t.session_id === sessionId)
-    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+export async function getTraces(gitSessionId: string): Promise<Trace[]> {
+  return prisma.trace.findMany({
+    where: { gitSessionId },
+    orderBy: { createdAt: 'asc' },
+  });
 }
 
 /**
- * Helper to save a trace with auto-generated ID
+ * Helper to save a trace with timing
  */
-export function saveTrace(
-  sessionId: string,
+export async function saveTrace(
+  gitSessionId: string,
   stage: string,
-  inputRef: string | null,
-  output: unknown
-): void {
-  const id = `trace_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  createTrace(id, sessionId, stage, inputRef, JSON.stringify(output));
+  snapshotId: string | null,
+  output: unknown,
+  startTime?: number
+): Promise<Trace> {
+  const durationMs = startTime ? Date.now() - startTime : undefined;
+  return createTrace({
+    gitSessionId,
+    stage,
+    snapshotId,
+    outputJson: output,
+    durationMs,
+  });
+}
+
+// ============================================
+// Event Operations (Analytics/Audit)
+// ============================================
+
+export interface CreateEventInput {
+  type: string;
+  userId?: string | null;
+  gitSessionId?: string | null;
+  metadata?: unknown;
+}
+
+export async function createEvent(input: CreateEventInput) {
+  return prisma.event.create({
+    data: {
+      type: input.type,
+      userId: input.userId,
+      gitSessionId: input.gitSessionId,
+      metadata: input.metadata as object | undefined,
+    },
+  });
+}
+
+// ============================================
+// Utility Functions
+// ============================================
+
+/**
+ * Check database connection
+ */
+export async function checkConnection(): Promise<boolean> {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return true;
+  } catch {
+    return false;
+  }
 }
