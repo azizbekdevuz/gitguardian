@@ -52,7 +52,7 @@ CONFLICT (content): Merge conflict in src/app.ts
 Automatic merge failed; fix conflicts.
 
 $ gitguard snapshot > snapshot.json
-✓ Snapshot captured
+Snapshot captured
 
 # Upload to GitGuard for AI-guided recovery`}</code>
           </pre>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ClipboardList, CheckCircle, AlertTriangle, AlertOctagon, HelpCircle, Check, Copy, ChevronDown, ChevronRight, Clipboard } from 'lucide-react';
 
 interface PlanStep {
   id: string;
@@ -55,7 +56,7 @@ export default function PlanTab({ sessionData }: PlanTabProps) {
           border: 'border-green-500/30',
           text: 'text-green-500',
           badge: 'bg-green-500/20 text-green-400',
-          icon: '✅',
+          Icon: CheckCircle,
         };
       case 'caution':
         return {
@@ -63,7 +64,7 @@ export default function PlanTab({ sessionData }: PlanTabProps) {
           border: 'border-yellow-500/30',
           text: 'text-yellow-500',
           badge: 'bg-yellow-500/20 text-yellow-400',
-          icon: '⚠️',
+          Icon: AlertTriangle,
         };
       case 'dangerous':
         return {
@@ -71,7 +72,7 @@ export default function PlanTab({ sessionData }: PlanTabProps) {
           border: 'border-red-500/30',
           text: 'text-red-500',
           badge: 'bg-red-500/20 text-red-400',
-          icon: '🚨',
+          Icon: AlertOctagon,
         };
       default:
         return {
@@ -79,7 +80,7 @@ export default function PlanTab({ sessionData }: PlanTabProps) {
           border: 'border-gray-500/30',
           text: 'text-gray-500',
           badge: 'bg-gray-500/20 text-gray-400',
-          icon: '❓',
+          Icon: HelpCircle,
         };
     }
   };
@@ -101,7 +102,7 @@ export default function PlanTab({ sessionData }: PlanTabProps) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="text-4xl mb-4">📋</div>
+          <ClipboardList className="w-12 h-12 mx-auto mb-4 text-gray-500" />
           <h2 className="text-xl font-semibold mb-2">No Recovery Plan</h2>
           <p className="text-text-secondary">
             No recovery steps have been generated for this session.
@@ -161,15 +162,15 @@ export default function PlanTab({ sessionData }: PlanTabProps) {
                       : 'bg-bg-tertiary text-text-secondary border border-border-color'
                   }`}
                 >
-                  {step.status === 'completed' ? '✓' : index + 1}
+                  {step.status === 'completed' ? <Check className="w-4 h-4" /> : index + 1}
                 </div>
 
                 {/* Title and Meta */}
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{step.title}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded ${dangerStyles.badge}`}>
-                      {dangerStyles.icon} {step.dangerLevel}
+                    <span className={`text-xs px-2 py-0.5 rounded ${dangerStyles.badge} flex items-center gap-1`}>
+                      <dangerStyles.Icon className="w-3 h-3" /> {step.dangerLevel}
                     </span>
                   </div>
                   {step.rationale && (
@@ -178,7 +179,7 @@ export default function PlanTab({ sessionData }: PlanTabProps) {
                 </div>
 
                 {/* Expand Indicator */}
-                <span className="text-text-muted">{isExpanded ? '▼' : '▶'}</span>
+                <span className="text-text-muted">{isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}</span>
               </button>
 
               {/* Expanded Content */}
@@ -201,7 +202,7 @@ export default function PlanTab({ sessionData }: PlanTabProps) {
                               className="opacity-0 group-hover:opacity-100 p-1 hover:bg-bg-tertiary rounded transition-all"
                               title="Copy to clipboard"
                             >
-                              {copiedCommand === `${step.id}-cmd-${i}` ? '✓' : '📋'}
+                              {copiedCommand === `${step.id}-cmd-${i}` ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                             </button>
                           </div>
                         ))}
@@ -226,7 +227,7 @@ export default function PlanTab({ sessionData }: PlanTabProps) {
                               className="opacity-0 group-hover:opacity-100 p-1 hover:bg-bg-tertiary rounded transition-all"
                               title="Copy to clipboard"
                             >
-                              {copiedCommand === `${step.id}-verify-${i}` ? '✓' : '📋'}
+                              {copiedCommand === `${step.id}-verify-${i}` ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                             </button>
                           </div>
                         ))}
@@ -251,7 +252,7 @@ export default function PlanTab({ sessionData }: PlanTabProps) {
                               className="opacity-0 group-hover:opacity-100 p-1 hover:bg-bg-tertiary rounded transition-all"
                               title="Copy to clipboard"
                             >
-                              {copiedCommand === `${step.id}-undo-${i}` ? '✓' : '📋'}
+                              {copiedCommand === `${step.id}-undo-${i}` ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                             </button>
                           </div>
                         ))}

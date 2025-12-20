@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Inbox, Search, Lightbulb, Clipboard, Check, Settings, BarChart3 } from 'lucide-react';
 
 interface Trace {
   id: string;
@@ -28,17 +29,17 @@ export default function TraceTab({ sessionData }: TraceTabProps) {
   const getStageIcon = (stage: string) => {
     switch (stage) {
       case 'ingest':
-        return '📥';
+        return Inbox;
       case 'analyze':
-        return '🔍';
+        return Search;
       case 'explain':
-        return '💡';
+        return Lightbulb;
       case 'plan':
-        return '📋';
+        return Clipboard;
       case 'verify':
-        return '✅';
+        return Check;
       default:
-        return '⚙️';
+        return Settings;
     }
   };
 
@@ -78,7 +79,7 @@ export default function TraceTab({ sessionData }: TraceTabProps) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="text-4xl mb-4">📊</div>
+          <div className="mb-4 flex justify-center"><BarChart3 className="w-12 h-12 text-text-muted" /></div>
           <h2 className="text-xl font-semibold mb-2">No Traces Available</h2>
           <p className="text-text-secondary">
             Pipeline traces will appear here as the system processes your snapshot.
@@ -108,11 +109,14 @@ export default function TraceTab({ sessionData }: TraceTabProps) {
                 {/* Timeline Connector */}
                 <div className="flex flex-col items-center">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
                       trace.success ? 'bg-bg-tertiary' : 'bg-red-500/20'
                     }`}
                   >
-                    {getStageIcon(trace.stage)}
+                    {(() => {
+                      const IconComponent = getStageIcon(trace.stage);
+                      return <IconComponent className="w-4 h-4" />;
+                    })()}
                   </div>
                   {index < traces.length - 1 && (
                     <div className="w-0.5 h-8 bg-border-color mt-1" />
@@ -154,7 +158,10 @@ export default function TraceTab({ sessionData }: TraceTabProps) {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">{getStageIcon(selectedTrace.stage)}</span>
+                  {(() => {
+                    const IconComponent = getStageIcon(selectedTrace.stage);
+                    return <IconComponent className="w-6 h-6" />;
+                  })()}
                   <div>
                     <h2 className="text-lg font-semibold capitalize">{selectedTrace.stage} Stage</h2>
                     <p className="text-sm text-text-secondary">

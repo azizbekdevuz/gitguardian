@@ -5,6 +5,7 @@ Uses SpoonOS Graph System for multi-stage AI pipeline
 import os
 import time
 import json
+import logging
 from typing import Optional, TypedDict
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -19,6 +20,14 @@ from spoon_ai.tools import ToolManager
 from spoon_ai.tools.base import BaseTool
 
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="GitGuard Agent",
@@ -271,13 +280,17 @@ async def detect_issue_node(state: GitAnalysisState) -> dict:
     """Stage 1: Detect issue type and risk level."""
     start = time.time()
     snapshot = state["snapshot"]
+    logger.info("🔍 [detect_issue] Starting issue detection...")
 
     tool = DetectIssueTool()
     result = await tool.execute(snapshot)
+    
+    duration_ms = int((time.time() - start) * 1000)
+    logger.info(f"✅ [detect_issue] Completed in {duration_ms}ms - Issue: {result.get('issue_type')}, Risk: {result.get('risk_level')}")
 
     trace = {
         "stage": "detect_issue",
-        "duration_ms": int((time.time() - start) * 1000),
+        "duration_ms": duration_ms,
         "output": result
     }
 
@@ -291,9 +304,15 @@ async def detect_issue_node(state: GitAnalysisState) -> dict:
 async def build_graph_node(state: GitAnalysisState) -> dict:
     """Stage 2: Build repository visualization graph."""
     start = time.time()
+    logger.info("📊 [build_graph] Building repository graph...")
 
     tool = BuildGraphTool()
     graph = await tool.execute(state["snapshot"])
+    
+    duration_ms = int((time.time() - start) * 1000)
+    node_count = len(graph.get("nodes", []))
+    edge_count = len(graph.get("edges", []))
+    logger.info(f"✅ [build_graph] Completed in {duration_ms}ms - Nodes: {node_count}, Edges: {edge_count}")
 
     trace = {
         "stage": "build_graph",
@@ -310,8 +329,10 @@ async def build_graph_node(state: GitAnalysisState) -> dict:
 async def extract_conflicts_node(state: GitAnalysisState) -> dict:
     """Stage 3: Extract conflict information."""
     start = time.time()
+    logger.info("🔧 [extract_conflicts] Extracting conflict information...")
 
     if state["issue_type"] != "merge_conflict":
+        logger.info("⏭️  [extract_conflicts] Skipped - not a merge conflict")
         return {"conflicts": [], "stage_traces": state.get("stage_traces", [])}
 
     tool = ExtractConflictsTool()
@@ -321,11 +342,15 @@ async def extract_conflicts_node(state: GitAnalysisState) -> dict:
         max_files=options.get("maxConflictFiles", 10),
         max_hunks=options.get("maxHunksPerFile", 5)
     )
+    
+    duration_ms = int((time.time() - start) * 1000)
+    conflict_count = len(conflicts)
+    logger.info(f"✅ [extract_conflicts] Completed in {duration_ms}ms - Found {conflict_count} conflict file(s)")
 
     trace = {
         "stage": "extract_conflicts",
-        "duration_ms": int((time.time() - start) * 1000),
-        "output": {"conflict_count": len(conflicts)}
+        "duration_ms": duration_ms,
+        "output": {"conflict_count": conflict_count}
     }
 
     return {
@@ -337,6 +362,7 @@ async def extract_conflicts_node(state: GitAnalysisState) -> dict:
 async def collect_signals_node(state: GitAnalysisState) -> dict:
     """Stage 4: Collect normalized signals for AI analysis."""
     start = time.time()
+    logger.info("📡 [collect_signals] Collecting repository signals...")
     snapshot = state["snapshot"]
 
     signals = {
@@ -354,9 +380,12 @@ async def collect_signals_node(state: GitAnalysisState) -> dict:
         ],
     }
 
+    duration_ms = int((time.time() - start) * 1000)
+    logger.info(f"✅ [collect_signals] Completed in {duration_ms}ms - Primary issue: {signals.get('primaryIssue')}")
+
     trace = {
         "stage": "collect_signals",
-        "duration_ms": int((time.time() - start) * 1000),
+        "duration_ms": duration_ms,
         "output": signals
     }
 
@@ -369,6 +398,7 @@ async def collect_signals_node(state: GitAnalysisState) -> dict:
 async def generate_analysis_node(state: GitAnalysisState) -> dict:
     """Stage 5: Use LLM to generate analysis, explanations, and plan."""
     start = time.time()
+    logger.info("🤖 [generate_analysis] Generating AI analysis and recovery plan...")
 
     snapshot = state["snapshot"]
     signals = state["signals"]
@@ -715,9 +745,12 @@ async def analyze_snapshot(request: AnalyzeRequest):
         }
 
         # Run the SpoonOS pipeline
+        logger.info("🔄 [PIPELINE] Starting SpoonOS pipeline execution...")
         result = await analysis_pipeline.invoke(initial_state)
+        logger.info("✅ [PIPELINE] SpoonOS pipeline completed successfully")
 
         duration_ms = int((time.time() - start_time) * 1000)
+        logger.info(f"⏱️  [ANALYZE] Total analysis time: {duration_ms}ms")
 
         # Enhance conflicts with explanations
         conflicts_with_explanations = []
@@ -730,6 +763,11 @@ async def analyze_snapshot(request: AnalyzeRequest):
                 "recommendation": explanation.get("recommendation"),
                 "priority": explanation.get("priority", "medium")
             })
+
+        logger.info(f"✅ [ANALYZE] Analysis complete - Issue: {result['issue_type']}, Risk: {result['risk_level']}")
+        logger.info(f"   Plan steps: {len(result.get('plan_steps', []))}")
+        logger.info(f"   Pipeline traces: {len(result.get('stage_traces', []))}")
+        logger.info("=" * 60)
 
         return AnalyzeResponse(
             success=True,
@@ -748,6 +786,8 @@ async def analyze_snapshot(request: AnalyzeRequest):
 
     except Exception as e:
         duration_ms = int((time.time() - start_time) * 1000)
+        logger.error(f"❌ [ANALYZE] Error during analysis: {str(e)}", exc_info=True)
+        logger.info("=" * 60)
         return AnalyzeResponse(
             success=False,
             error=str(e),
@@ -804,5 +844,10 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", "8000"))
     host = os.getenv("HOST", "0.0.0.0")
-    print(f"Starting GitGuard Agent with SpoonOS on {host}:{port}")
+    logger.info("=" * 60)
+    logger.info("🚀 GitGuard Agent Service Starting")
+    logger.info(f"   Host: {host}")
+    logger.info(f"   Port: {port}")
+    logger.info(f"   SpoonOS Pipeline: Enabled")
+    logger.info("=" * 60)
     uvicorn.run(app, host=host, port=port)

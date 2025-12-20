@@ -95,9 +95,24 @@ export async function POST(request: NextRequest) {
 
     // Call SpoonOS agent for analysis
     const analyzeStartTime = Date.now();
-    let agentResponse: { success: boolean; analysis?: AgentAnalysis; error?: string };
+    let agentResponse: { 
+      success: boolean; 
+      analysis?: AgentAnalysis; 
+      error?: string;
+      pipelineTraces?: Array<{
+        stage: string;
+        duration_ms?: number;
+        durationMs?: number;
+        input?: unknown;
+        inputJson?: unknown;
+        output?: unknown;
+        outputJson?: unknown;
+        success?: boolean;
+      }>;
+    };
 
     try {
+      console.log(`[INGEST] Calling Python agent at ${AGENT_URL}/analyze`);
       const agentResult = await fetch(`${AGENT_URL}/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -112,17 +127,39 @@ export async function POST(request: NextRequest) {
       });
 
       if (!agentResult.ok) {
-        throw new Error(`Agent returned ${agentResult.status}`);
+        const errorText = await agentResult.text();
+        console.error(`[INGEST] Agent returned ${agentResult.status}: ${errorText}`);
+        throw new Error(`Agent returned ${agentResult.status}: ${errorText}`);
       }
 
       agentResponse = await agentResult.json();
+      console.log(`[INGEST] Agent response received - success: ${agentResponse.success}, traces: ${agentResponse.pipelineTraces?.length || 0}`);
+      
+      // Save SpoonOS pipeline traces if available from Python agent
+      if (agentResponse.pipelineTraces && Array.isArray(agentResponse.pipelineTraces)) {
+        let cumulativeTime = analyzeStartTime;
+        for (const trace of agentResponse.pipelineTraces) {
+          const traceStart = cumulativeTime;
+          cumulativeTime += (trace.duration_ms || trace.durationMs || 0);
+          await saveTrace(
+            gitSession.id,
+            trace.stage || 'unknown',
+            snapshotRecord.id,
+            trace.input || trace.inputJson || {},
+            trace.output || trace.outputJson || {},
+            traceStart,
+            trace.success !== false,
+          );
+        }
+      }
     } catch (agentError) {
       // Fallback to basic analysis if agent is unavailable
-      console.error('Agent unavailable, using fallback analysis:', agentError);
+      console.error('[INGEST] ❌ Agent unavailable, using fallback analysis:', agentError);
+      console.error('[INGEST] Error details:', agentError instanceof Error ? agentError.message : String(agentError));
       agentResponse = generateFallbackAnalysis(snapshot);
     }
 
-    // Save analyze trace
+    // Save analyze trace (for compatibility)
     await saveTrace(
       gitSession.id,
       'analyze',

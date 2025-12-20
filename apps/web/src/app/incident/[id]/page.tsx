@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { AlertTriangle, Link2, RefreshCw, CheckCircle, HelpCircle, XCircle } from 'lucide-react';
 
 // Tab components
 import OverviewTab from './tabs/OverviewTab';
@@ -107,15 +108,15 @@ export default function IncidentRoomPage() {
   const getIssueIcon = (issueType: string) => {
     switch (issueType) {
       case 'merge_conflict':
-        return '⚠️';
+        return <AlertTriangle className="w-6 h-6 text-yellow-500" />;
       case 'detached_head':
-        return '🔗';
+        return <Link2 className="w-6 h-6 text-orange-500" />;
       case 'rebase_in_progress':
-        return '🔄';
+        return <RefreshCw className="w-6 h-6 text-blue-500" />;
       case 'clean':
-        return '✅';
+        return <CheckCircle className="w-6 h-6 text-green-500" />;
       default:
-        return '❓';
+        return <HelpCircle className="w-6 h-6 text-gray-500" />;
     }
   };
 
@@ -147,7 +148,7 @@ export default function IncidentRoomPage() {
       <main className="min-h-screen bg-bg-primary">
         <div className="flex items-center justify-center h-screen">
           <div className="text-center">
-            <div className="text-4xl mb-4">❌</div>
+            <XCircle className="w-12 h-12 mx-auto mb-4 text-red-500" />
             <h1 className="text-xl font-bold mb-2">Error Loading Session</h1>
             <p className="text-text-secondary mb-4">{error || 'Session not found'}</p>
             <Link href="/dashboard" className="text-accent-blue hover:underline">

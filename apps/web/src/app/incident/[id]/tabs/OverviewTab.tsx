@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { AlertTriangle, Link2, RefreshCw, CheckCircle, HelpCircle } from 'lucide-react';
 
 interface RepoGraph {
   nodes: Array<{ id: string; type: string; label: string; sha?: string; isCurrent?: boolean }>;
@@ -71,12 +72,12 @@ export default function OverviewTab({ sessionData }: OverviewTabProps) {
       {/* Summary Card */}
       <div className="bg-bg-secondary border border-border-color rounded-lg p-6">
         <div className="flex items-start gap-4">
-          <div className={`text-3xl ${issueInfo.color}`}>
-            {sessionData.analysis?.issueType === 'merge_conflict' && '⚠️'}
-            {sessionData.analysis?.issueType === 'detached_head' && '🔗'}
-            {sessionData.analysis?.issueType === 'rebase_in_progress' && '🔄'}
-            {sessionData.analysis?.issueType === 'clean' && '✅'}
-            {(!sessionData.analysis?.issueType || sessionData.analysis?.issueType === 'unknown') && '❓'}
+          <div className={`${issueInfo.color}`}>
+            {sessionData.analysis?.issueType === 'merge_conflict' && <AlertTriangle className="w-8 h-8" />}
+            {sessionData.analysis?.issueType === 'detached_head' && <Link2 className="w-8 h-8" />}
+            {sessionData.analysis?.issueType === 'rebase_in_progress' && <RefreshCw className="w-8 h-8" />}
+            {sessionData.analysis?.issueType === 'clean' && <CheckCircle className="w-8 h-8" />}
+            {(!sessionData.analysis?.issueType || sessionData.analysis?.issueType === 'unknown') && <HelpCircle className="w-8 h-8" />}
           </div>
           <div className="flex-1">
             <h2 className={`text-xl font-semibold ${issueInfo.color}`}>{issueInfo.title}</h2>
