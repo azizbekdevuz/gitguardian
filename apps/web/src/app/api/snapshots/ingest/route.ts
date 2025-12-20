@@ -3,41 +3,9 @@ import { SnapshotV1Schema } from '@gitguard/schema';
 import { createSession, createSnapshot, updateSessionStatus, saveTrace, createAnalysis, createConflictFile, createConflictHunk, createPlanStep } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { createHash } from 'crypto';
+import { generateTitle, generateFallbackAnalysis, type AgentAnalysis } from './utils';
 
 const AGENT_URL = process.env.AGENT_URL || 'http://localhost:8000';
-
-interface AgentAnalysis {
-  issueType: string;
-  summary: string;
-  repoGraph?: {
-    nodes: Array<{ id: string; type: string; label: string; sha?: string; isCurrent?: boolean }>;
-    edges: Array<{ from: string; to: string; type?: string }>;
-  };
-  conflicts?: Array<{
-    path: string;
-    highLevelSummary?: string;
-    hunks: Array<{
-      index: number;
-      startLine?: number;
-      endLine?: number;
-      baseText: string;
-      oursText: string;
-      theirsText: string;
-      explanation?: string;
-      suggestedChoice?: string;
-      suggestedContent?: string;
-    }>;
-  }>;
-  plan: Array<{
-    index: number;
-    title: string;
-    rationale?: string;
-    commands: string[];
-    verify: string[];
-    undo: string[];
-    dangerLevel: string;
-  }>;
-}
 
 /**
  * POST /api/snapshots/ingest
@@ -47,17 +15,33 @@ interface AgentAnalysis {
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const requestId = `req-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+  console.log(`[WEB:INGEST:${requestId}] ========================================`);
+  console.log(`[WEB:INGEST:${requestId}] 📥 New snapshot ingestion request received`);
+  console.log(`[WEB:INGEST:${requestId}] Timestamp: ${new Date().toISOString()}`);
+  console.log(`[WEB:INGEST:${requestId}] Agent URL: ${AGENT_URL}`);
 
   try {
     const body = await request.json();
     const { snapshot: rawSnapshot } = body;
 
+    console.log(`[WEB:INGEST:${requestId}] ✅ Request body parsed successfully`);
+    console.log(`[WEB:INGEST:${requestId}] Snapshot size: ${JSON.stringify(rawSnapshot).length} bytes`);
+
     // Validate snapshot
     const snapshot = SnapshotV1Schema.parse(rawSnapshot);
+    console.log(`[WEB:INGEST:${requestId}] ✅ Snapshot validated against schema`);
+    console.log(`[WEB:INGEST:${requestId}] Repository: ${snapshot.repoRoot}`);
+    console.log(`[WEB:INGEST:${requestId}] Branch: ${snapshot.branch.head}`);
+    console.log(`[WEB:INGEST:${requestId}] Conflicts: ${snapshot.unmergedFiles.length} files`);
+    console.log(`[WEB:INGEST:${requestId}] Detached HEAD: ${snapshot.isDetachedHead}`);
+    console.log(`[WEB:INGEST:${requestId}] Rebase in progress: ${snapshot.rebaseState.inProgress}`);
 
     // Get current user (optional - uploads can be anonymous)
     const session = await auth();
     const userId = session?.user?.id || null;
+    console.log(`[WEB:INGEST:${requestId}] User: ${userId || 'anonymous'}`);
 
     // Create hash of repo root for deduplication
     const repoRootHash = createHash('sha256')
@@ -67,6 +51,7 @@ export async function POST(request: NextRequest) {
 
     // Generate title from branch and issue
     const title = generateTitle(snapshot);
+    console.log(`[WEB:INGEST:${requestId}] Generated title: ${title}`);
 
     // Create session in database
     const gitSession = await createSession({
@@ -76,12 +61,14 @@ export async function POST(request: NextRequest) {
       userId,
       status: 'analyzing',
     });
+    console.log(`[WEB:INGEST:${requestId}] ✅ Session created: ${gitSession.id}`);
 
     // Save snapshot
     const snapshotRecord = await createSnapshot({
       gitSessionId: gitSession.id,
       snapshotJson: snapshot,
     });
+    console.log(`[WEB:INGEST:${requestId}] ✅ Snapshot saved: ${snapshotRecord.id}`);
 
     // Save ingest trace
     await saveTrace(
@@ -92,6 +79,7 @@ export async function POST(request: NextRequest) {
       { snapshotId: snapshotRecord.id },
       startTime
     );
+    console.log(`[WEB:INGEST:${requestId}] ✅ Ingest trace saved`);
 
     // Call SpoonOS agent for analysis
     const analyzeStartTime = Date.now();
@@ -99,6 +87,7 @@ export async function POST(request: NextRequest) {
       success: boolean; 
       analysis?: AgentAnalysis; 
       error?: string;
+      durationMs?: number;
       pipelineTraces?: Array<{
         stage: string;
         duration_ms?: number;
@@ -112,7 +101,11 @@ export async function POST(request: NextRequest) {
     };
 
     try {
-      console.log(`[INGEST] Calling Python agent at ${AGENT_URL}/analyze`);
+      console.log(`[WEB:INGEST:${requestId}] 🔄 Attempting to call Python agent...`);
+      console.log(`[WEB:INGEST:${requestId}]    URL: ${AGENT_URL}/analyze`);
+      console.log(`[WEB:INGEST:${requestId}]    Method: POST`);
+      
+      const agentRequestStart = Date.now();
       const agentResult = await fetch(`${AGENT_URL}/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -126,17 +119,27 @@ export async function POST(request: NextRequest) {
         }),
       });
 
+      const agentRequestDuration = Date.now() - agentRequestStart;
+      console.log(`[WEB:INGEST:${requestId}]    Request duration: ${agentRequestDuration}ms`);
+      console.log(`[WEB:INGEST:${requestId}]    Response status: ${agentResult.status}`);
+
       if (!agentResult.ok) {
         const errorText = await agentResult.text();
-        console.error(`[INGEST] Agent returned ${agentResult.status}: ${errorText}`);
+        console.error(`[WEB:INGEST:${requestId}] ❌ Agent returned error status ${agentResult.status}`);
+        console.error(`[WEB:INGEST:${requestId}]    Error body: ${errorText.substring(0, 200)}`);
         throw new Error(`Agent returned ${agentResult.status}: ${errorText}`);
       }
 
       agentResponse = await agentResult.json();
-      console.log(`[INGEST] Agent response received - success: ${agentResponse.success}, traces: ${agentResponse.pipelineTraces?.length || 0}`);
+      console.log(`[WEB:INGEST:${requestId}] ✅ Agent response received successfully`);
+      console.log(`[WEB:INGEST:${requestId}]    Success: ${agentResponse.success}`);
+      console.log(`[WEB:INGEST:${requestId}]    Pipeline traces: ${agentResponse.pipelineTraces?.length || 0}`);
+      console.log(`[WEB:INGEST:${requestId}]    Duration (agent): ${agentResponse.durationMs || 'unknown'}ms`);
+      console.log(`[WEB:INGEST:${requestId}] 🎯 USING REAL AI MODEL (Python Agent)`);
       
       // Save SpoonOS pipeline traces if available from Python agent
       if (agentResponse.pipelineTraces && Array.isArray(agentResponse.pipelineTraces)) {
+        console.log(`[WEB:INGEST:${requestId}] 💾 Saving ${agentResponse.pipelineTraces.length} pipeline traces...`);
         let cumulativeTime = analyzeStartTime;
         for (const trace of agentResponse.pipelineTraces) {
           const traceStart = cumulativeTime;
@@ -150,13 +153,22 @@ export async function POST(request: NextRequest) {
             traceStart,
             trace.success !== false,
           );
+          console.log(`[WEB:INGEST:${requestId}]    ✓ Saved trace: ${trace.stage} (${trace.duration_ms || trace.durationMs || 0}ms)`);
         }
+        console.log(`[WEB:INGEST:${requestId}] ✅ All pipeline traces saved`);
       }
     } catch (agentError) {
       // Fallback to basic analysis if agent is unavailable
-      console.error('[INGEST] ❌ Agent unavailable, using fallback analysis:', agentError);
-      console.error('[INGEST] Error details:', agentError instanceof Error ? agentError.message : String(agentError));
+      console.error(`[WEB:INGEST:${requestId}] ❌ Python agent call failed`);
+      console.error(`[WEB:INGEST:${requestId}]    Error type: ${agentError instanceof Error ? agentError.constructor.name : typeof agentError}`);
+      console.error(`[WEB:INGEST:${requestId}]    Error message: ${agentError instanceof Error ? agentError.message : String(agentError)}`);
+      console.error(`[WEB:INGEST:${requestId}] ⚠️  FALLBACK MODE: Using TypeScript fallback analysis (NO AI)`);
       agentResponse = generateFallbackAnalysis(snapshot);
+      console.log(`[WEB:INGEST:${requestId}] ✅ Fallback analysis generated`);
+      if (agentResponse.analysis) {
+        console.log(`[WEB:INGEST:${requestId}]    Issue type: ${agentResponse.analysis.issueType}`);
+        console.log(`[WEB:INGEST:${requestId}]    Plan steps: ${agentResponse.analysis.plan.length}`);
+      }
     }
 
     // Save analyze trace (for compatibility)
@@ -171,6 +183,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!agentResponse.success || !agentResponse.analysis) {
+      console.error(`[WEB:INGEST:${requestId}] ❌ Analysis failed or missing`);
       await updateSessionStatus(gitSession.id, 'error');
       return NextResponse.json(
         { error: agentResponse.error || 'Analysis failed' },
@@ -178,8 +191,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const analysis = agentResponse.analysis;
+    // TypeScript guard: we know analysis exists after the check above
+    const analysis: AgentAnalysis = agentResponse.analysis!;
+    console.log(`[WEB:INGEST:${requestId}] ✅ Analysis received successfully`);
 
+    console.log(`[WEB:INGEST:${requestId}] 💾 Storing analysis in database...`);
     // Store analysis in database
     const analysisRecord = await createAnalysis({
       gitSessionId: gitSession.id,
@@ -188,9 +204,11 @@ export async function POST(request: NextRequest) {
       summary: analysis.summary,
       repoGraphJson: analysis.repoGraph,
     });
+    console.log(`[WEB:INGEST:${requestId}] ✅ Analysis record created: ${analysisRecord.id}`);
 
     // Store conflict files and hunks
     if (analysis.conflicts) {
+      console.log(`[WEB:INGEST:${requestId}] 💾 Storing ${analysis.conflicts.length} conflict files...`);
       for (const conflict of analysis.conflicts) {
         const conflictFile = await createConflictFile({
           analysisId: analysisRecord.id,
@@ -213,9 +231,11 @@ export async function POST(request: NextRequest) {
           });
         }
       }
+      console.log(`[WEB:INGEST:${requestId}] ✅ All conflict files stored`);
     }
 
     // Store plan steps
+    console.log(`[WEB:INGEST:${requestId}] 💾 Storing ${analysis.plan.length} plan steps...`);
     for (const step of analysis.plan) {
       await createPlanStep({
         analysisId: analysisRecord.id,
@@ -228,13 +248,21 @@ export async function POST(request: NextRequest) {
         dangerLevel: step.dangerLevel,
       });
     }
+    console.log(`[WEB:INGEST:${requestId}] ✅ All plan steps stored`);
 
     // Update session status to ready
     await updateSessionStatus(gitSession.id, 'ready');
+    console.log(`[WEB:INGEST:${requestId}] ✅ Session status updated to 'ready'`);
 
     // Build response URL
     const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || 'http://localhost:3000';
     const sessionUrl = `${baseUrl}/incident/${gitSession.id}`;
+
+    const totalDuration = Date.now() - startTime;
+    console.log(`[WEB:INGEST:${requestId}] ✅ Request completed successfully`);
+    console.log(`[WEB:INGEST:${requestId}]    Total duration: ${totalDuration}ms`);
+    console.log(`[WEB:INGEST:${requestId}]    Session URL: ${sessionUrl}`);
+    console.log(`[WEB:INGEST:${requestId}] ========================================`);
 
     return NextResponse.json({
       sessionId: gitSession.id,
@@ -245,178 +273,13 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error ingesting snapshot:', error);
+    console.error(`[WEB:INGEST:${requestId}] ❌ Fatal error during ingestion`);
+    console.error(`[WEB:INGEST:${requestId}]    Error: ${error instanceof Error ? error.message : String(error)}`);
+    if (error instanceof Error && error.stack) {
+      console.error(`[WEB:INGEST:${requestId}]    Stack: ${error.stack.substring(0, 500)}`);
+    }
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
 
-function generateTitle(snapshot: {
-  branch: { head: string };
-  isDetachedHead: boolean;
-  unmergedFiles: unknown[];
-  rebaseState: { inProgress: boolean };
-}): string {
-  const parts: string[] = [];
-
-  if (snapshot.unmergedFiles.length > 0) {
-    parts.push('Merge Conflict');
-  } else if (snapshot.rebaseState.inProgress) {
-    parts.push('Rebase');
-  } else if (snapshot.isDetachedHead) {
-    parts.push('Detached HEAD');
-  }
-
-  parts.push(`on ${snapshot.branch.head}`);
-
-  return parts.join(' ') || 'Git Recovery Session';
-}
-
-function generateFallbackAnalysis(snapshot: {
-  unmergedFiles: Array<{ path: string; conflictBlocks?: Array<{ oursContent: string; theirsContent: string; context?: string }> }>;
-  isDetachedHead: boolean;
-  rebaseState: { inProgress: boolean };
-  branch: { head: string };
-}): { success: boolean; analysis: AgentAnalysis } {
-  let issueType = 'unknown';
-  let summary = 'Repository state analysis';
-
-  if (snapshot.unmergedFiles.length > 0) {
-    issueType = 'merge_conflict';
-    summary = `Found ${snapshot.unmergedFiles.length} file(s) with merge conflicts. Review each conflict and choose how to resolve.`;
-  } else if (snapshot.rebaseState.inProgress) {
-    issueType = 'rebase_in_progress';
-    summary = 'A rebase operation is in progress. You can continue, skip, or abort.';
-  } else if (snapshot.isDetachedHead) {
-    issueType = 'detached_head';
-    summary = 'HEAD is detached. Consider creating a branch to save your work.';
-  } else {
-    issueType = 'clean';
-    summary = 'Repository appears to be in a clean state.';
-  }
-
-  // Extract conflicts
-  const conflicts = snapshot.unmergedFiles.map((file) => ({
-    path: file.path,
-    hunks: (file.conflictBlocks || []).map((block, i) => ({
-      index: i,
-      baseText: block.context || '',
-      oursText: block.oursContent || '',
-      theirsText: block.theirsContent || '',
-    })),
-  }));
-
-  // Generate basic plan
-  const plan: AgentAnalysis['plan'] = [];
-
-  if (issueType === 'merge_conflict') {
-    plan.push(
-      {
-        index: 0,
-        title: 'Review conflicts',
-        rationale: 'Understand what changes conflict before resolving',
-        commands: ['git status', 'git diff --name-only --diff-filter=U'],
-        verify: ['git status'],
-        undo: [],
-        dangerLevel: 'safe',
-      },
-      {
-        index: 1,
-        title: 'Resolve each conflict',
-        rationale: 'Edit files to remove conflict markers and choose correct content',
-        commands: ['# Edit files manually or use the Conflict Explorer'],
-        verify: ['git diff <file>'],
-        undo: ['git checkout --conflict=merge <file>'],
-        dangerLevel: 'safe',
-      },
-      {
-        index: 2,
-        title: 'Stage resolved files',
-        rationale: 'Mark conflicts as resolved',
-        commands: ['git add <files>'],
-        verify: ['git status'],
-        undo: ['git reset HEAD <files>'],
-        dangerLevel: 'safe',
-      },
-      {
-        index: 3,
-        title: 'Complete merge',
-        rationale: 'Commit the merge',
-        commands: ['git commit'],
-        verify: ['git log -1'],
-        undo: ['git reset --soft HEAD~1'],
-        dangerLevel: 'caution',
-      }
-    );
-  } else if (issueType === 'detached_head') {
-    plan.push(
-      {
-        index: 0,
-        title: 'Check current state',
-        rationale: 'Understand where HEAD is pointing',
-        commands: ['git log --oneline -5', 'git status'],
-        verify: [],
-        undo: [],
-        dangerLevel: 'safe',
-      },
-      {
-        index: 1,
-        title: 'Create branch to save work',
-        rationale: 'Preserve commits before switching',
-        commands: ['git branch temp-save'],
-        verify: ['git branch'],
-        undo: ['git branch -d temp-save'],
-        dangerLevel: 'safe',
-      },
-      {
-        index: 2,
-        title: 'Return to main branch',
-        rationale: 'Switch back to your working branch',
-        commands: [`git checkout ${snapshot.branch.head}`],
-        verify: ['git status'],
-        undo: [],
-        dangerLevel: 'safe',
-      }
-    );
-  } else if (issueType === 'rebase_in_progress') {
-    plan.push(
-      {
-        index: 0,
-        title: 'Check rebase status',
-        rationale: 'Understand the current rebase state',
-        commands: ['git status'],
-        verify: [],
-        undo: [],
-        dangerLevel: 'safe',
-      },
-      {
-        index: 1,
-        title: 'Option A: Continue rebase',
-        rationale: 'If conflicts are resolved, continue',
-        commands: ['git add .', 'git rebase --continue'],
-        verify: ['git status'],
-        undo: ['git rebase --abort'],
-        dangerLevel: 'caution',
-      },
-      {
-        index: 2,
-        title: 'Option B: Abort rebase',
-        rationale: 'Cancel and return to previous state',
-        commands: ['git rebase --abort'],
-        verify: ['git log -3'],
-        undo: [],
-        dangerLevel: 'safe',
-      }
-    );
-  }
-
-  return {
-    success: true,
-    analysis: {
-      issueType,
-      summary,
-      conflicts: conflicts.length > 0 ? conflicts : undefined,
-      plan,
-    },
-  };
-}
