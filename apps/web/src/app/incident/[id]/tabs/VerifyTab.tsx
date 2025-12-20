@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { FileText, Upload, PartyPopper, AlertTriangle, X } from 'lucide-react';
 
 interface SessionData {
   id: string;
@@ -67,19 +68,29 @@ export default function VerifyTab({ sessionData }: VerifyTabProps) {
       const content = await uploadedFile.text();
       const snapshot = JSON.parse(content);
 
-      // TODO: Actually call the API to verify the new snapshot
-      // For now, simulate a response
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Call the actual API to verify the snapshot
+      const response = await fetch(`/api/sessions/${sessionData.id}/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ snapshot }),
+      });
 
-      // Simulated comparison result
+      if (!response.ok) {
+        throw new Error(response.statusText || 'Verification failed');
+      }
+
+      const data = await response.json();
+
+      // Transform API response to match component expectations
+      const remainingIssues = Array.isArray(data.remainingIssues) ? data.remainingIssues : [];
       setUploadResult({
         success: true,
         message: 'Snapshot analyzed successfully',
         comparison: {
-          previousIssue: sessionData.analysis?.issueType || 'unknown',
-          currentIssue: snapshot.unmergedFiles?.length > 0 ? 'merge_conflict' : 'clean',
-          resolved: snapshot.unmergedFiles?.length === 0,
-          remainingIssues: snapshot.unmergedFiles?.map((f: { path: string }) => f.path) || [],
+          previousIssue: data.previousIssue || sessionData.analysis?.issueType || 'unknown',
+          currentIssue: data.currentIssue || 'unknown',
+          resolved: data.resolved || false,
+          remainingIssues: remainingIssues,
         },
       });
     } catch (error) {
@@ -136,7 +147,7 @@ export default function VerifyTab({ sessionData }: VerifyTabProps) {
       >
         {uploadedFile ? (
           <div className="space-y-4">
-            <div className="text-4xl">📄</div>
+            <div className="flex justify-center"><FileText className="w-12 h-12 text-text-muted" /></div>
             <div>
               <p className="font-medium">{uploadedFile.name}</p>
               <p className="text-sm text-text-muted">
@@ -161,7 +172,7 @@ export default function VerifyTab({ sessionData }: VerifyTabProps) {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="text-4xl">📤</div>
+            <div className="flex justify-center"><Upload className="w-12 h-12 text-text-muted" /></div>
             <div>
               <p className="font-medium">Drop your snapshot file here</p>
               <p className="text-sm text-text-muted">or click to browse</p>
@@ -197,9 +208,11 @@ export default function VerifyTab({ sessionData }: VerifyTabProps) {
           {uploadResult.success && uploadResult.comparison ? (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <span className="text-3xl">
-                  {uploadResult.comparison.resolved ? '🎉' : '⚠️'}
-                </span>
+                {uploadResult.comparison.resolved ? (
+                  <PartyPopper className="w-8 h-8 text-green-500" />
+                ) : (
+                  <AlertTriangle className="w-8 h-8 text-yellow-500" />
+                )}
                 <div>
                   <h3 className="text-lg font-semibold">
                     {uploadResult.comparison.resolved
@@ -209,7 +222,7 @@ export default function VerifyTab({ sessionData }: VerifyTabProps) {
                   <p className="text-text-secondary">
                     {uploadResult.comparison.resolved
                       ? 'Your repository is now in a clean state.'
-                      : `${uploadResult.comparison.remainingIssues.length} issue(s) still need attention.`}
+                      : `${uploadResult.comparison.remainingIssues?.length || 0} issue(s) still need attention.`}
                   </p>
                 </div>
               </div>
@@ -237,13 +250,13 @@ export default function VerifyTab({ sessionData }: VerifyTabProps) {
               </div>
 
               {/* Remaining Issues */}
-              {uploadResult.comparison.remainingIssues.length > 0 && (
+              {uploadResult.comparison.remainingIssues && uploadResult.comparison.remainingIssues.length > 0 && (
                 <div className="pt-4 border-t border-border-color">
                   <h4 className="text-sm font-medium text-text-muted mb-2">Remaining Issues</h4>
                   <ul className="space-y-1">
                     {uploadResult.comparison.remainingIssues.map((issue, i) => (
                       <li key={i} className="flex items-center gap-2 text-sm">
-                        <span className="text-yellow-500">⚠️</span>
+                        <AlertTriangle className="w-4 h-4 text-yellow-500" />
                         <span className="font-mono">{issue}</span>
                       </li>
                     ))}
@@ -253,7 +266,7 @@ export default function VerifyTab({ sessionData }: VerifyTabProps) {
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <span className="text-3xl">❌</span>
+              <X className="w-8 h-8 text-red-400" />
               <div>
                 <h3 className="text-lg font-semibold text-red-400">Analysis Failed</h3>
                 <p className="text-text-secondary">{uploadResult.message}</p>

@@ -37,3 +37,16 @@ npm-debug.log*
 
 # claude
 .claude
+
+# python 
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz
+*.pyzw
+*.pyzwz

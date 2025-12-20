@@ -1,0 +1,19 @@
+[Unit]
+Description=GitGuard Agent Service (SpoonOS)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/gitguardian/apps/agent
+Environment="PATH=/var/www/gitguardian/apps/agent/venv/bin"
+ExecStart=/var/www/gitguardian/apps/agent/venv/bin/python main.py
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=gitguard-agent
+
+[Install]
+WantedBy=multi-user.target
+

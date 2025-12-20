@@ -37,7 +37,12 @@ export async function GET(
       createdAt: t.createdAt.toISOString(),
       durationMs: t.durationMs,
       success: t.success,
-    }));
+    })).filter(t => 
+      // Only include SpoonOS pipeline stages for the pipeline tab
+      ['detect_issue', 'build_graph', 'extract_conflicts', 'collect_signals', 'generate_analysis'].includes(t.stage) ||
+      // Or include all traces if none match (for backward compatibility)
+      !sessionData.traces.some(tr => ['detect_issue', 'build_graph', 'extract_conflicts', 'collect_signals', 'generate_analysis'].includes(tr.stage))
+    );
 
     // Transform plan steps from database to PlanV1 format
     let plan = null;

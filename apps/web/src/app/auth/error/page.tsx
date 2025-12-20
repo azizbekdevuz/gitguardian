@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { AlertTriangle } from 'lucide-react';
 
 const errorMessages: Record<string, string> = {
   Configuration: 'There is a problem with the server configuration.',
@@ -19,7 +20,7 @@ function ErrorContent() {
   return (
     <div className="w-full max-w-md">
       <div className="card text-center">
-        <div className="text-4xl mb-4">⚠️</div>
+        <div className="mb-4 flex justify-center"><AlertTriangle className="w-12 h-12 text-yellow-500" /></div>
         <h1 className="text-2xl font-bold mb-4">Authentication Error</h1>
         <p className="text-text-secondary mb-6">{errorMessage}</p>
         <Link href="/auth/signin" className="btn btn-primary">

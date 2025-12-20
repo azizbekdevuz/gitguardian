@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { CheckCircle, AlertTriangle, Bot, Check } from 'lucide-react';
 
 interface ConflictHunk {
   id: string;
@@ -63,7 +64,7 @@ export default function ConflictsTab({ sessionData }: ConflictsTabProps) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="text-4xl mb-4">✅</div>
+          <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-500" />
           <h2 className="text-xl font-semibold mb-2">No Conflicts Found</h2>
           <p className="text-text-secondary">
             There are no merge conflicts to resolve in this session.
@@ -92,7 +93,7 @@ export default function ConflictsTab({ sessionData }: ConflictsTabProps) {
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className="text-yellow-500">⚠️</span>
+                <AlertTriangle className="w-4 h-4 text-yellow-500 flex-shrink-0" />
                 <span className="font-mono text-sm truncate flex-1">{file.path}</span>
               </div>
               <div className="mt-1 text-xs text-text-muted">
@@ -153,7 +154,7 @@ export default function ConflictsTab({ sessionData }: ConflictsTabProps) {
                   {hunk.explanation && (
                     <div className="p-3 bg-accent-purple/10 border-b border-border-color">
                       <div className="flex items-start gap-2">
-                        <span className="text-accent-purple">🤖</span>
+                        <Bot className="w-4 h-4 text-accent-purple flex-shrink-0 mt-0.5" />
                         <p className="text-sm text-text-secondary">{hunk.explanation}</p>
                       </div>
                     </div>
@@ -243,7 +244,9 @@ export default function ConflictsTab({ sessionData }: ConflictsTabProps) {
                         Manual Edit
                       </button>
                       {hunkChoices[hunk.id] && (
-                        <span className="ml-auto text-xs text-green-500">✓ Selected</span>
+                        <span className="ml-auto text-xs text-green-500 flex items-center gap-1">
+                          <Check className="w-3 h-3" /> Selected
+                        </span>
                       )}
                     </div>
                   </div>

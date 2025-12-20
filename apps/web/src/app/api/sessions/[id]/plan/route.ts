@@ -121,12 +121,32 @@ export async function POST(
     // Run the SpoonOS pipeline
     const pipelineStart = Date.now();
 
-    // Stage 1: Collect signals
-    const collectorStart = Date.now();
+    // Stage 1: Detect Issue (SpoonOS: detect_issue)
+    const detectStart = Date.now();
     const signals = collectSignals(snapshot);
-    await saveTrace(sessionId, 'collector', snapshotRecord.id, { snapshot: 'parsed' }, signals, collectorStart);
+    const issueType = signals.primaryIssue || 'unknown';
+    const riskLevel = signals.estimatedRisk || 'medium';
+    await saveTrace(sessionId, 'detect_issue', snapshotRecord.id, { snapshot: 'parsed' }, { issueType, riskLevel }, detectStart);
 
-    // Stage 2: Classify issue (may use LLM for ambiguous cases)
+    // Stage 2: Build Graph (SpoonOS: build_graph)
+    const graphStart = Date.now();
+    const repoGraph = {
+      nodes: [],
+      edges: [],
+      headRef: snapshot.branch.oid,
+    };
+    await saveTrace(sessionId, 'build_graph', snapshotRecord.id, { snapshot }, { nodes: 0, edges: 0 }, graphStart);
+
+    // Stage 3: Extract Conflicts (SpoonOS: extract_conflicts)
+    const extractStart = Date.now();
+    const conflictCount = snapshot.unmergedFiles.length;
+    await saveTrace(sessionId, 'extract_conflicts', snapshotRecord.id, { snapshot }, { conflictCount }, extractStart);
+
+    // Stage 4: Collect Signals (SpoonOS: collect_signals)
+    const signalsStart = Date.now();
+    await saveTrace(sessionId, 'collect_signals', snapshotRecord.id, { snapshot }, signals, signalsStart);
+
+    // Stage 5: Classify Issue (refinement)
     const classifierStart = Date.now();
     const classification = await classifyIssue(signals);
     await saveTrace(sessionId, 'classifier', snapshotRecord.id, signals, classification, classifierStart);
@@ -139,10 +159,10 @@ export async function POST(
       estimatedRisk: classification.estimatedRisk,
     };
 
-    // Stage 3: Generate plan
+    // Stage 6: Generate Analysis (SpoonOS: generate_analysis)
     const plannerStart = Date.now();
     const plan = await generatePlan(snapshot, classifiedSignals, dangerousAllowed);
-    await saveTrace(sessionId, 'planner', snapshotRecord.id, classifiedSignals, plan, plannerStart);
+    await saveTrace(sessionId, 'generate_analysis', snapshotRecord.id, classifiedSignals, plan, plannerStart);
 
     // Delete existing analysis for this snapshot (allows regeneration)
     await deleteAnalysisBySnapshotId(snapshotRecord.id);
