@@ -1,0 +1,286 @@
+{
+  "sessions": [
+    {
+      "id": "mc1Q0So42cm3Au6AYst5x",
+      "created_at": "2025-12-20T10:27:55.433Z",
+      "title": "Merge Conflict on main",
+      "os": "win32",
+      "repo_root_hash": "2acad7126789fb5c"
+    },
+    {
+      "id": "PRD_TagR_sZR7RsTFoPSB",
+      "created_at": "2025-12-20T10:58:23.372Z",
+      "title": "Merge Conflict on main",
+      "os": "win32",
+      "repo_root_hash": "2acad7126789fb5c"
+    },
+    {
+      "id": "1YaUXMEiVPeOqOF0ucvFx",
+      "created_at": "2025-12-20T11:05:02.221Z",
+      "title": "Merge Conflict on main",
+      "os": "win32",
+      "repo_root_hash": "2acad7126789fb5c"
+    },
+    {
+      "id": "y6kDO-fWsaDCkyMFtHLX8",
+      "created_at": "2025-12-20T11:21:16.532Z",
+      "title": "Merge Conflict on main",
+      "os": "win32",
+      "repo_root_hash": "2acad7126789fb5c"
+    },
+    {
+      "id": "2Rfg_B7RGwKrj3RLJX-nr",
+      "created_at": "2025-12-20T12:00:09.651Z",
+      "title": "Merge Conflict on main",
+      "os": "win32",
+      "repo_root_hash": "2acad7126789fb5c"
+    }
+  ],
+  "snapshots": [
+    {
+      "id": "Blw5CXcvVasgsjffbN4AY",
+      "session_id": "mc1Q0So42cm3Au6AYst5x",
+      "created_at": "2025-12-20T10:27:55.463Z",
+      "snapshot_json": "{\"version\":1,\"timestamp\":\"2025-12-20T09:27:25.331Z\",\"platform\":\"win32\",\"repoRoot\":\"D:/Workplace/Web/gitguard-test-repo\",\"gitDir\":\".git\",\"branch\":{\"head\":\"main\",\"oid\":\"57c30402b78516de8fe5486cdd827b404b17009a\"},\"isDetachedHead\":false,\"rebaseState\":{\"inProgress\":false,\"type\":\"none\"},\"unmergedFiles\":[{\"path\":\"app.js\",\"conflictBlocks\":[{\"startLine\":2,\"endLine\":22,\"oursContent\":\"  if (\\\\!name) throw new Error('Name is required');\\n  console.log('Welcome, ' + name.toUpperCase());\\n}\\n\\nfunction calculate(a, b) {\\n  if (typeof a \\\\!== 'number' || typeof b \\\\!== 'number') {\\n    throw new Error('Both arguments must be numbers');\\n  }\\n  return a + b;\",\"theirsContent\":\"  console.log('[LOG] Greeting user:', name);\\n  console.log('Hello, ' + name + '\\\\!');\\n}\\n\\nfunction calculate(a, b) {\\n  console.log('[LOG] Calculating:', a, '+', b);\\n  const result = a + b;\\n  console.log('[LOG] Result:', result);\\n  return result;\",\"context\":\"function greet(name) {\\n<<<<<<< HEAD\\n  if (\\\\!name) throw new Error('Name is required');\\n  console.log('Welcome, ' + name.toUpperCase());\\n}\\n\\nfunction calculate(a, b) {\\n  if (typeof a \\\\!== 'number' || typeof b \\\\!== 'number') {\\n    throw new Error('Both arguments must be numbers');\\n  }\\n  return a + b;\\n=======\\n  console.log('[LOG] Greeting user:', name);\\n  console.log('Hello, ' + name + '\\\\!');\\n}\\n\\nfunction calculate(a, b) {\\n  console.log('[LOG] Calculating:', a, '+', b);\\n  const result = a + b;\\n  console.log('[LOG] Result:', result);\\n  return result;\\n>>>>>>> feature-logging\\n}\\n\\nmodule.exports = { greet, calculate };\\n\"}]}],\"stagedFiles\":[],\"modifiedFiles\":[],\"untrackedFiles\":[],\"recentLog\":[{\"hash\":\"57c3040\",\"refs\":[\"HEAD\",\"main\"],\"message\":\"Add validation to functions\"},{\"hash\":\"409673f\",\"refs\":[],\"message\":\"Add main application file\"},{\"hash\":\"661a95d\",\"refs\":[],\"message\":\"Initial commit\"}],\"recentReflog\":[{\"hash\":\"57c3040\",\"selector\":\"HEAD@{0}\",\"action\":\"commit\",\"message\":\"Add validation to functions\"},{\"hash\":\"409673f\",\"selector\":\"HEAD@{1}\",\"action\":\"checkout\",\"message\":\"moving from feature-logging to main\"},{\"hash\":\"73d1a10\",\"selector\":\"HEAD@{2}\",\"action\":\"commit\",\"message\":\"Add logging to all functions\"},{\"hash\":\"409673f\",\"selector\":\"HEAD@{3}\",\"action\":\"checkout\",\"message\":\"moving from main to feature-logging\"},{\"hash\":\"409673f\",\"selector\":\"HEAD@{4}\",\"action\":\"commit\",\"message\":\"Add main application file\"},{\"hash\":\"661a95d\",\"selector\":\"HEAD@{5}\",\"action\":\"commit (initial)\",\"message\":\"Initial commit\"}],\"rawStatus\":\"# branch.oid 57c30402b78516de8fe5486cdd827b404b17009a\\n# branch.head main\\nu UU N... 100644 100644 100644 100644 564ab70abe278c232f4c9be9a389db76f134ab03 cd66e3f1847228fa1ba0da5e6b658440f384e8a2 5857530259179afa534e1401d9ef7c7dd250055c app.js\\n\",\"rawBranches\":\"  feature-logging 73d1a10 Add logging to all functions\\n* main            57c3040 Add validation to functions\\n\"}",
+      "truncated": 0
+    },
+    {
+      "id": "S6gSZhFd7CRLr9rOEc01_",
+      "session_id": "PRD_TagR_sZR7RsTFoPSB",
+      "created_at": "2025-12-20T10:58:23.412Z",
+      "snapshot_json": "{\"version\":1,\"timestamp\":\"2025-12-20T09:27:25.331Z\",\"platform\":\"win32\",\"repoRoot\":\"D:/Workplace/Web/gitguard-test-repo\",\"gitDir\":\".git\",\"branch\":{\"head\":\"main\",\"oid\":\"57c30402b78516de8fe5486cdd827b404b17009a\"},\"isDetachedHead\":false,\"rebaseState\":{\"inProgress\":false,\"type\":\"none\"},\"unmergedFiles\":[{\"path\":\"app.js\",\"conflictBlocks\":[{\"startLine\":2,\"endLine\":22,\"oursContent\":\"  if (\\\\!name) throw new Error('Name is required');\\n  console.log('Welcome, ' + name.toUpperCase());\\n}\\n\\nfunction calculate(a, b) {\\n  if (typeof a \\\\!== 'number' || typeof b \\\\!== 'number') {\\n    throw new Error('Both arguments must be numbers');\\n  }\\n  return a + b;\",\"theirsContent\":\"  console.log('[LOG] Greeting user:', name);\\n  console.log('Hello, ' + name + '\\\\!');\\n}\\n\\nfunction calculate(a, b) {\\n  console.log('[LOG] Calculating:', a, '+', b);\\n  const result = a + b;\\n  console.log('[LOG] Result:', result);\\n  return result;\",\"context\":\"function greet(name) {\\n<<<<<<< HEAD\\n  if (\\\\!name) throw new Error('Name is required');\\n  console.log('Welcome, ' + name.toUpperCase());\\n}\\n\\nfunction calculate(a, b) {\\n  if (typeof a \\\\!== 'number' || typeof b \\\\!== 'number') {\\n    throw new Error('Both arguments must be numbers');\\n  }\\n  return a + b;\\n=======\\n  console.log('[LOG] Greeting user:', name);\\n  console.log('Hello, ' + name + '\\\\!');\\n}\\n\\nfunction calculate(a, b) {\\n  console.log('[LOG] Calculating:', a, '+', b);\\n  const result = a + b;\\n  console.log('[LOG] Result:', result);\\n  return result;\\n>>>>>>> feature-logging\\n}\\n\\nmodule.exports = { greet, calculate };\\n\"}]}],\"stagedFiles\":[],\"modifiedFiles\":[],\"untrackedFiles\":[],\"recentLog\":[{\"hash\":\"57c3040\",\"refs\":[\"HEAD\",\"main\"],\"message\":\"Add validation to functions\"},{\"hash\":\"409673f\",\"refs\":[],\"message\":\"Add main application file\"},{\"hash\":\"661a95d\",\"refs\":[],\"message\":\"Initial commit\"}],\"recentReflog\":[{\"hash\":\"57c3040\",\"selector\":\"HEAD@{0}\",\"action\":\"commit\",\"message\":\"Add validation to functions\"},{\"hash\":\"409673f\",\"selector\":\"HEAD@{1}\",\"action\":\"checkout\",\"message\":\"moving from feature-logging to main\"},{\"hash\":\"73d1a10\",\"selector\":\"HEAD@{2}\",\"action\":\"commit\",\"message\":\"Add logging to all functions\"},{\"hash\":\"409673f\",\"selector\":\"HEAD@{3}\",\"action\":\"checkout\",\"message\":\"moving from main to feature-logging\"},{\"hash\":\"409673f\",\"selector\":\"HEAD@{4}\",\"action\":\"commit\",\"message\":\"Add main application file\"},{\"hash\":\"661a95d\",\"selector\":\"HEAD@{5}\",\"action\":\"commit (initial)\",\"message\":\"Initial commit\"}],\"rawStatus\":\"# branch.oid 57c30402b78516de8fe5486cdd827b404b17009a\\n# branch.head main\\nu UU N... 100644 100644 100644 100644 564ab70abe278c232f4c9be9a389db76f134ab03 cd66e3f1847228fa1ba0da5e6b658440f384e8a2 5857530259179afa534e1401d9ef7c7dd250055c app.js\\n\",\"rawBranches\":\"  feature-logging 73d1a10 Add logging to all functions\\n* main            57c3040 Add validation to functions\\n\"}",
+      "truncated": 0
+    },
+    {
+      "id": "fFT2z22qvrZqe1gBJbVKG",
+      "session_id": "1YaUXMEiVPeOqOF0ucvFx",
+      "created_at": "2025-12-20T11:05:02.280Z",
+      "snapshot_json": "{\"version\":1,\"timestamp\":\"2025-12-20T09:27:25.331Z\",\"platform\":\"win32\",\"repoRoot\":\"D:/Workplace/Web/gitguard-test-repo\",\"gitDir\":\".git\",\"branch\":{\"head\":\"main\",\"oid\":\"57c30402b78516de8fe5486cdd827b404b17009a\"},\"isDetachedHead\":false,\"rebaseState\":{\"inProgress\":false,\"type\":\"none\"},\"unmergedFiles\":[{\"path\":\"app.js\",\"conflictBlocks\":[{\"startLine\":2,\"endLine\":22,\"oursContent\":\"  if (\\\\!name) throw new Error('Name is required');\\n  console.log('Welcome, ' + name.toUpperCase());\\n}\\n\\nfunction calculate(a, b) {\\n  if (typeof a \\\\!== 'number' || typeof b \\\\!== 'number') {\\n    throw new Error('Both arguments must be numbers');\\n  }\\n  return a + b;\",\"theirsContent\":\"  console.log('[LOG] Greeting user:', name);\\n  console.log('Hello, ' + name + '\\\\!');\\n}\\n\\nfunction calculate(a, b) {\\n  console.log('[LOG] Calculating:', a, '+', b);\\n  const result = a + b;\\n  console.log('[LOG] Result:', result);\\n  return result;\",\"context\":\"function greet(name) {\\n<<<<<<< HEAD\\n  if (\\\\!name) throw new Error('Name is required');\\n  console.log('Welcome, ' + name.toUpperCase());\\n}\\n\\nfunction calculate(a, b) {\\n  if (typeof a \\\\!== 'number' || typeof b \\\\!== 'number') {\\n    throw new Error('Both arguments must be numbers');\\n  }\\n  return a + b;\\n=======\\n  console.log('[LOG] Greeting user:', name);\\n  console.log('Hello, ' + name + '\\\\!');\\n}\\n\\nfunction calculate(a, b) {\\n  console.log('[LOG] Calculating:', a, '+', b);\\n  const result = a + b;\\n  console.log('[LOG] Result:', result);\\n  return result;\\n>>>>>>> feature-logging\\n}\\n\\nmodule.exports = { greet, calculate };\\n\"}]}],\"stagedFiles\":[],\"modifiedFiles\":[],\"untrackedFiles\":[],\"recentLog\":[{\"hash\":\"57c3040\",\"refs\":[\"HEAD\",\"main\"],\"message\":\"Add validation to functions\"},{\"hash\":\"409673f\",\"refs\":[],\"message\":\"Add main application file\"},{\"hash\":\"661a95d\",\"refs\":[],\"message\":\"Initial commit\"}],\"recentReflog\":[{\"hash\":\"57c3040\",\"selector\":\"HEAD@{0}\",\"action\":\"commit\",\"message\":\"Add validation to functions\"},{\"hash\":\"409673f\",\"selector\":\"HEAD@{1}\",\"action\":\"checkout\",\"message\":\"moving from feature-logging to main\"},{\"hash\":\"73d1a10\",\"selector\":\"HEAD@{2}\",\"action\":\"commit\",\"message\":\"Add logging to all functions\"},{\"hash\":\"409673f\",\"selector\":\"HEAD@{3}\",\"action\":\"checkout\",\"message\":\"moving from main to feature-logging\"},{\"hash\":\"409673f\",\"selector\":\"HEAD@{4}\",\"action\":\"commit\",\"message\":\"Add main application file\"},{\"hash\":\"661a95d\",\"selector\":\"HEAD@{5}\",\"action\":\"commit (initial)\",\"message\":\"Initial commit\"}],\"rawStatus\":\"# branch.oid 57c30402b78516de8fe5486cdd827b404b17009a\\n# branch.head main\\nu UU N... 100644 100644 100644 100644 564ab70abe278c232f4c9be9a389db76f134ab03 cd66e3f1847228fa1ba0da5e6b658440f384e8a2 5857530259179afa534e1401d9ef7c7dd250055c app.js\\n\",\"rawBranches\":\"  feature-logging 73d1a10 Add logging to all functions\\n* main            57c3040 Add validation to functions\\n\"}",
+      "truncated": 0
+    },
+    {
+      "id": "l0d73FHdTU90OYFXPNCMn",
+      "session_id": "y6kDO-fWsaDCkyMFtHLX8",
+      "created_at": "2025-12-20T11:21:16.581Z",
+      "snapshot_json": "{\"version\":1,\"timestamp\":\"2025-12-20T09:27:25.331Z\",\"platform\":\"win32\",\"repoRoot\":\"D:/Workplace/Web/gitguard-test-repo\",\"gitDir\":\".git\",\"branch\":{\"head\":\"main\",\"oid\":\"57c30402b78516de8fe5486cdd827b404b17009a\"},\"isDetachedHead\":false,\"rebaseState\":{\"inProgress\":false,\"type\":\"none\"},\"unmergedFiles\":[{\"path\":\"app.js\",\"conflictBlocks\":[{\"startLine\":2,\"endLine\":22,\"oursContent\":\"  if (\\\\!name) throw new Error('Name is required');\\n  console.log('Welcome, ' + name.toUpperCase());\\n}\\n\\nfunction calculate(a, b) {\\n  if (typeof a \\\\!== 'number' || typeof b \\\\!== 'number') {\\n    throw new Error('Both arguments must be numbers');\\n  }\\n  return a + b;\",\"theirsContent\":\"  console.log('[LOG] Greeting user:', name);\\n  console.log('Hello, ' + name + '\\\\!');\\n}\\n\\nfunction calculate(a, b) {\\n  console.log('[LOG] Calculating:', a, '+', b);\\n  const result = a + b;\\n  console.log('[LOG] Result:', result);\\n  return result;\",\"context\":\"function greet(name) {\\n<<<<<<< HEAD\\n  if (\\\\!name) throw new Error('Name is required');\\n  console.log('Welcome, ' + name.toUpperCase());\\n}\\n\\nfunction calculate(a, b) {\\n  if (typeof a \\\\!== 'number' || typeof b \\\\!== 'number') {\\n    throw new Error('Both arguments must be numbers');\\n  }\\n  return a + b;\\n=======\\n  console.log('[LOG] Greeting user:', name);\\n  console.log('Hello, ' + name + '\\\\!');\\n}\\n\\nfunction calculate(a, b) {\\n  console.log('[LOG] Calculating:', a, '+', b);\\n  const result = a + b;\\n  console.log('[LOG] Result:', result);\\n  return result;\\n>>>>>>> feature-logging\\n}\\n\\nmodule.exports = { greet, calculate };\\n\"}]}],\"stagedFiles\":[],\"modifiedFiles\":[],\"untrackedFiles\":[],\"recentLog\":[{\"hash\":\"57c3040\",\"refs\":[\"HEAD\",\"main\"],\"message\":\"Add validation to functions\"},{\"hash\":\"409673f\",\"refs\":[],\"message\":\"Add main application file\"},{\"hash\":\"661a95d\",\"refs\":[],\"message\":\"Initial commit\"}],\"recentReflog\":[{\"hash\":\"57c3040\",\"selector\":\"HEAD@{0}\",\"action\":\"commit\",\"message\":\"Add validation to functions\"},{\"hash\":\"409673f\",\"selector\":\"HEAD@{1}\",\"action\":\"checkout\",\"message\":\"moving from feature-logging to main\"},{\"hash\":\"73d1a10\",\"selector\":\"HEAD@{2}\",\"action\":\"commit\",\"message\":\"Add logging to all functions\"},{\"hash\":\"409673f\",\"selector\":\"HEAD@{3}\",\"action\":\"checkout\",\"message\":\"moving from main to feature-logging\"},{\"hash\":\"409673f\",\"selector\":\"HEAD@{4}\",\"action\":\"commit\",\"message\":\"Add main application file\"},{\"hash\":\"661a95d\",\"selector\":\"HEAD@{5}\",\"action\":\"commit (initial)\",\"message\":\"Initial commit\"}],\"rawStatus\":\"# branch.oid 57c30402b78516de8fe5486cdd827b404b17009a\\n# branch.head main\\nu UU N... 100644 100644 100644 100644 564ab70abe278c232f4c9be9a389db76f134ab03 cd66e3f1847228fa1ba0da5e6b658440f384e8a2 5857530259179afa534e1401d9ef7c7dd250055c app.js\\n\",\"rawBranches\":\"  feature-logging 73d1a10 Add logging to all functions\\n* main            57c3040 Add validation to functions\\n\"}",
+      "truncated": 0
+    },
+    {
+      "id": "2NThxxPkuUPtYjw2xxvKK",
+      "session_id": "2Rfg_B7RGwKrj3RLJX-nr",
+      "created_at": "2025-12-20T12:00:09.686Z",
+      "snapshot_json": "{\"version\":1,\"timestamp\":\"2025-12-20T09:27:25.331Z\",\"platform\":\"win32\",\"repoRoot\":\"D:/Workplace/Web/gitguard-test-repo\",\"gitDir\":\".git\",\"branch\":{\"head\":\"main\",\"oid\":\"57c30402b78516de8fe5486cdd827b404b17009a\"},\"isDetachedHead\":false,\"rebaseState\":{\"inProgress\":false,\"type\":\"none\"},\"unmergedFiles\":[{\"path\":\"app.js\",\"conflictBlocks\":[{\"startLine\":2,\"endLine\":22,\"oursContent\":\"  if (\\\\!name) throw new Error('Name is required');\\n  console.log('Welcome, ' + name.toUpperCase());\\n}\\n\\nfunction calculate(a, b) {\\n  if (typeof a \\\\!== 'number' || typeof b \\\\!== 'number') {\\n    throw new Error('Both arguments must be numbers');\\n  }\\n  return a + b;\",\"theirsContent\":\"  console.log('[LOG] Greeting user:', name);\\n  console.log('Hello, ' + name + '\\\\!');\\n}\\n\\nfunction calculate(a, b) {\\n  console.log('[LOG] Calculating:', a, '+', b);\\n  const result = a + b;\\n  console.log('[LOG] Result:', result);\\n  return result;\",\"context\":\"function greet(name) {\\n<<<<<<< HEAD\\n  if (\\\\!name) throw new Error('Name is required');\\n  console.log('Welcome, ' + name.toUpperCase());\\n}\\n\\nfunction calculate(a, b) {\\n  if (typeof a \\\\!== 'number' || typeof b \\\\!== 'number') {\\n    throw new Error('Both arguments must be numbers');\\n  }\\n  return a + b;\\n=======\\n  console.log('[LOG] Greeting user:', name);\\n  console.log('Hello, ' + name + '\\\\!');\\n}\\n\\nfunction calculate(a, b) {\\n  console.log('[LOG] Calculating:', a, '+', b);\\n  const result = a + b;\\n  console.log('[LOG] Result:', result);\\n  return result;\\n>>>>>>> feature-logging\\n}\\n\\nmodule.exports = { greet, calculate };\\n\"}]}],\"stagedFiles\":[],\"modifiedFiles\":[],\"untrackedFiles\":[],\"recentLog\":[{\"hash\":\"57c3040\",\"refs\":[\"HEAD\",\"main\"],\"message\":\"Add validation to functions\"},{\"hash\":\"409673f\",\"refs\":[],\"message\":\"Add main application file\"},{\"hash\":\"661a95d\",\"refs\":[],\"message\":\"Initial commit\"}],\"recentReflog\":[{\"hash\":\"57c3040\",\"selector\":\"HEAD@{0}\",\"action\":\"commit\",\"message\":\"Add validation to functions\"},{\"hash\":\"409673f\",\"selector\":\"HEAD@{1}\",\"action\":\"checkout\",\"message\":\"moving from feature-logging to main\"},{\"hash\":\"73d1a10\",\"selector\":\"HEAD@{2}\",\"action\":\"commit\",\"message\":\"Add logging to all functions\"},{\"hash\":\"409673f\",\"selector\":\"HEAD@{3}\",\"action\":\"checkout\",\"message\":\"moving from main to feature-logging\"},{\"hash\":\"409673f\",\"selector\":\"HEAD@{4}\",\"action\":\"commit\",\"message\":\"Add main application file\"},{\"hash\":\"661a95d\",\"selector\":\"HEAD@{5}\",\"action\":\"commit (initial)\",\"message\":\"Initial commit\"}],\"rawStatus\":\"# branch.oid 57c30402b78516de8fe5486cdd827b404b17009a\\n# branch.head main\\nu UU N... 100644 100644 100644 100644 564ab70abe278c232f4c9be9a389db76f134ab03 cd66e3f1847228fa1ba0da5e6b658440f384e8a2 5857530259179afa534e1401d9ef7c7dd250055c app.js\\n\",\"rawBranches\":\"  feature-logging 73d1a10 Add logging to all functions\\n* main            57c3040 Add validation to functions\\n\"}",
+      "truncated": 0
+    }
+  ],
+  "plans": [
+    {
+      "id": "J8zEWen3EJ3a1A1Vsumjt",
+      "session_id": "mc1Q0So42cm3Au6AYst5x",
+      "created_at": "2025-12-20T10:28:04.562Z",
+      "issue_type": "merge_conflict",
+      "risk": "medium",
+      "plan_json": "{\"version\":1,\"timestamp\":\"2025-12-20T10:28:04.516Z\",\"issueType\":\"merge_conflict\",\"issueSummary\":\"Repository has unresolved merge conflicts that need manual resolution.\",\"risk\":\"medium\",\"steps\":[{\"id\":\"step-1\",\"title\":\"Review conflicting files\",\"description\":\"Examine the files with merge conflicts to understand what needs to be resolved.\",\"commands\":[\"git status\"],\"expected\":\"You will see a list of files with conflicts marked as \\\"both modified\\\".\",\"undo\":{\"possible\":true,\"commands\":[],\"description\":\"This is a read-only operation, no undo needed.\"},\"dangerous\":false,\"requiresUserInput\":false},{\"id\":\"step-2\",\"title\":\"Open and resolve conflicts\",\"description\":\"Edit each conflicting file and resolve the conflicts by choosing or combining changes.\",\"commands\":[\"# Edit files manually to resolve conflict markers\"],\"expected\":\"Files no longer contain <<<<<<, =======, or >>>>>>> markers.\",\"undo\":{\"possible\":true,\"commands\":[\"git checkout --conflict=merge <file>\"],\"description\":\"Restore conflict markers to try resolution again.\"},\"dangerous\":false,\"requiresUserInput\":true,\"userInputHint\":\"Remove conflict markers and keep desired code.\"},{\"id\":\"step-3\",\"title\":\"Stage resolved files\",\"description\":\"Mark conflicts as resolved by staging the files.\",\"commands\":[\"git add <resolved-files>\"],\"expected\":\"Files are staged and ready for commit.\",\"undo\":{\"possible\":true,\"commands\":[\"git reset HEAD <file>\"],\"description\":\"Unstage files if you need to make more changes.\"},\"dangerous\":false,\"requiresUserInput\":false},{\"id\":\"step-4\",\"title\":\"Complete the merge\",\"description\":\"Commit the resolved merge.\",\"commands\":[\"git commit\"],\"expected\":\"Merge is complete and working directory is clean.\",\"undo\":{\"possible\":true,\"commands\":[\"git reset --soft HEAD~1\"],\"description\":\"Undo the merge commit while keeping changes staged.\"},\"dangerous\":false,\"requiresUserInput\":false}],\"reflogRecovery\":{\"description\":\"If something goes wrong, you can always return to your pre-merge state using reflog.\",\"relevantEntries\":[\"HEAD@{1}\"],\"recoveryCommand\":\"git reset --hard HEAD@{1}\"}}",
+      "dangerous_allowed": 0
+    },
+    {
+      "id": "jE-4hse16ZgoY5Cv-3N6l",
+      "session_id": "PRD_TagR_sZR7RsTFoPSB",
+      "created_at": "2025-12-20T10:58:30.729Z",
+      "issue_type": "merge_conflict",
+      "risk": "low",
+      "plan_json": "{\"version\":1,\"timestamp\":\"2023-04-19T12:34:56Z\",\"issueType\":\"merge_conflict\",\"issueSummary\":\"Merge conflict detected in the app.js file between the main and feature-logging branches.\",\"risk\":\"low\",\"steps\":[{\"id\":\"step-1\",\"title\":\"Resolve merge conflict\",\"description\":\"Open the app.js file and review the conflicting changes. Resolve the conflict by keeping the desired changes from both branches.\",\"commands\":[\"git mergetool\"],\"expected\":\"The merge conflict in app.js is resolved, and the file is ready to be committed.\",\"undo\":{\"possible\":true,\"commands\":[\"git reset --merge\"],\"description\":\"If you need to undo the merge conflict resolution, use `git reset --merge` to revert the changes and restore the original conflicting versions of the file.\"},\"dangerous\":false,\"requiresUserInput\":true,\"userInputHint\":\"Review and resolve the conflicts in the app.js file using a merge tool or manually.\"}],\"reflogRecovery\":{\"description\":\"If you need to recover from the current state, you can use the Git reflog to revert to a previous commit.\",\"relevantEntries\":[\"HEAD@{0}\",\"HEAD@{1}\",\"HEAD@{2}\",\"HEAD@{3}\",\"HEAD@{4}\",\"HEAD@{5}\"],\"recoveryCommand\":\"git reset --hard HEAD@{N}\"}}",
+      "dangerous_allowed": 0
+    },
+    {
+      "id": "qZnclY13etYdZKhlEpYbd",
+      "session_id": "1YaUXMEiVPeOqOF0ucvFx",
+      "created_at": "2025-12-20T11:05:17.910Z",
+      "issue_type": "merge_conflict",
+      "risk": "low",
+      "plan_json": "{\"version\":1,\"timestamp\":\"2023-04-26T12:34:56Z\",\"issueType\":\"merge_conflict\",\"issueSummary\":\"Merge conflict detected in the app.js file between the main and feature-logging branches.\",\"risk\":\"low\",\"steps\":[{\"id\":\"step-1\",\"title\":\"Resolve merge conflict in app.js\",\"description\":\"Open the app.js file and manually resolve the merge conflict by choosing the desired changes from both branches.\",\"commands\":[\"git mergetool\",\"git add app.js\",\"git commit -m 'Resolve merge conflict in app.js'\"],\"expected\":\"The merge conflict in app.js is resolved, and the changes are committed to the repository.\",\"undo\":{\"possible\":true,\"commands\":[\"git reset HEAD~1\",\"git checkout -- app.js\"],\"description\":\"Undo the merge conflict resolution by resetting the last commit and checking out the original version of app.js.\"},\"dangerous\":false,\"requiresUserInput\":true,\"userInputHint\":\"Manually resolve the merge conflict in the app.js file.\"}],\"reflogRecovery\":{\"description\":\"If the merge conflict resolution is not satisfactory, you can use the Git reflog to recover to a previous state of the repository.\",\"relevantEntries\":[\"HEAD@{1}\",\"HEAD@{3}\"],\"recoveryCommand\":\"git reset --hard HEAD@{N}\"}}",
+      "dangerous_allowed": 0
+    },
+    {
+      "id": "GvpWWkg3tpkWWTMb9ukkA",
+      "session_id": "1YaUXMEiVPeOqOF0ucvFx",
+      "created_at": "2025-12-20T11:05:45.537Z",
+      "issue_type": "merge_conflict",
+      "risk": "low",
+      "plan_json": "{\"version\":1,\"timestamp\":\"2023-04-19T12:34:56.789Z\",\"issueType\":\"merge_conflict\",\"issueSummary\":\"A merge conflict has occurred in the app.js file between the main branch and a feature branch.\",\"risk\":\"low\",\"steps\":[{\"id\":\"step-1\",\"title\":\"Resolve merge conflict\",\"description\":\"Open the app.js file and manually resolve the conflict by choosing the desired changes from each branch.\",\"commands\":[\"git merge --continue\"],\"expected\":\"The merge conflict is resolved, and the merge is completed.\",\"undo\":{\"possible\":true,\"commands\":[\"git merge --abort\"],\"description\":\"If you want to undo the merge, you can run `git merge --abort` to reset the repository to the state before the merge.\"},\"dangerous\":false,\"requiresUserInput\":true,\"userInputHint\":\"Manually resolve the conflict in the app.js file.\"}],\"reflogRecovery\":{\"description\":\"If you encounter any issues or need to revert to a previous state, you can use the Git reflog to recover your repository. The reflog contains a history of all the changes made to the repository's HEAD, which can be used to restore a previous state.\",\"relevantEntries\":[\"HEAD@{0}\",\"HEAD@{1}\",\"HEAD@{2}\",\"HEAD@{3}\",\"HEAD@{4}\",\"HEAD@{5}\"],\"recoveryCommand\":\"git reset --hard HEAD@{N}\"}}",
+      "dangerous_allowed": 0
+    },
+    {
+      "id": "Bnu-Ojag-YjoVnaTswBb6",
+      "session_id": "y6kDO-fWsaDCkyMFtHLX8",
+      "created_at": "2025-12-20T11:21:51.003Z",
+      "issue_type": "merge_conflict",
+      "risk": "low",
+      "plan_json": "{\"version\":1,\"timestamp\":\"2023-04-22T12:34:56.789Z\",\"issueType\":\"merge_conflict\",\"issueSummary\":\"Merge conflict in app.js between current main branch and a conflicting feature branch\",\"risk\":\"low\",\"steps\":[{\"id\":\"step-1\",\"title\":\"Resolve merge conflict in app.js\",\"description\":\"Open the app.js file and manually resolve the merge conflict by choosing the desired changes from each branch. Once resolved, stage the changes and commit the resolved merge.\",\"commands\":[\"git add app.js\",\"git commit -m 'Resolve merge conflict in app.js'\"],\"expected\":\"The merge conflict in app.js is resolved and the changes are committed to the main branch.\",\"undo\":{\"possible\":true,\"commands\":[\"git reset --hard HEAD~1\"],\"description\":\"Undo the last commit that resolved the merge conflict by resetting the branch to the previous commit.\"},\"dangerous\":false,\"requiresUserInput\":true,\"userInputHint\":\"Review the conflicting changes in app.js and choose the desired changes to resolve the conflict.\"}],\"reflogRecovery\":{\"description\":\"If the manual resolution of the merge conflict is not successful, you can use the git reflog to recover to a previous state of the repository.\",\"relevantEntries\":[\"HEAD@{0}\",\"HEAD@{1}\",\"HEAD@{2}\",\"HEAD@{3}\",\"HEAD@{4}\",\"HEAD@{5}\"],\"recoveryCommand\":\"git reset --hard HEAD@{N}\"}}",
+      "dangerous_allowed": 0
+    },
+    {
+      "id": "w5wf4L2DkVu3aXMXPFw9R",
+      "session_id": "2Rfg_B7RGwKrj3RLJX-nr",
+      "created_at": "2025-12-20T12:00:38.701Z",
+      "issue_type": "merge_conflict",
+      "risk": "low",
+      "plan_json": "{\"version\":1,\"timestamp\":\"2023-04-20T12:00:00Z\",\"issueType\":\"merge_conflict\",\"issueSummary\":\"A merge conflict has occurred in the app.js file, specifically in lines 2-22.\",\"risk\":\"low\",\"steps\":[{\"id\":\"step-1\",\"title\":\"Resolve the merge conflict\",\"description\":\"Open the app.js file and manually resolve the merge conflict by choosing the desired changes from the conflicting versions.\",\"commands\":[\"git status\",\"git mergetool\"],\"expected\":\"The merge conflict in app.js is resolved, and the file is ready to be added and committed.\",\"undo\":{\"possible\":true,\"commands\":[\"git reset --hard HEAD\"],\"description\":\"If you need to undo the conflict resolution, you can use `git reset --hard HEAD` to revert the changes and return to the pre-conflict state.\"},\"dangerous\":false,\"requiresUserInput\":true,\"userInputHint\":\"Manually resolve the merge conflict in the app.js file.\"}],\"reflogRecovery\":{\"description\":\"If you need to recover a previous state of the repository, you can use the git reflog to find the relevant commit and reset the branch to that point.\",\"relevantEntries\":[\"HEAD@{0}\",\"HEAD@{1}\",\"HEAD@{2}\",\"HEAD@{3}\",\"HEAD@{4}\",\"HEAD@{5}\"],\"recoveryCommand\":\"git reset --hard HEAD@{N}\"}}",
+      "dangerous_allowed": 0
+    }
+  ],
+  "traces": [
+    {
+      "id": "-tyBuwCIHsCICagLo2buE",
+      "session_id": "mc1Q0So42cm3Au6AYst5x",
+      "created_at": "2025-12-20T10:27:55.501Z",
+      "stage": "collector",
+      "input_ref": "Blw5CXcvVasgsjffbN4AY",
+      "output_json": "{\"hasConflicts\":true,\"conflictCount\":1,\"conflictFiles\":[\"app.js\"],\"isDetachedHead\":false,\"isRebaseInProgress\":false,\"rebaseType\":\"none\",\"currentBranch\":\"main\",\"aheadCount\":0,\"behindCount\":0,\"hasStagedChanges\":false,\"hasUnstagedChanges\":false,\"hasUntrackedFiles\":false,\"recentCheckouts\":[{\"from\":\"feature-logging\",\"to\":\"main\",\"reflogSelector\":\"HEAD@{1}\"},{\"from\":\"main\",\"to\":\"feature-logging\",\"reflogSelector\":\"HEAD@{3}\"}],\"recentResets\":[],\"primaryIssue\":\"merge_conflict\",\"secondaryIssues\":[],\"estimatedRisk\":\"low\"}"
+    },
+    {
+      "id": "WrYAzDMxVZEI4r0TMkbm1",
+      "session_id": "mc1Q0So42cm3Au6AYst5x",
+      "created_at": "2025-12-20T10:28:04.510Z",
+      "stage": "classifier",
+      "input_ref": null,
+      "output_json": "{\"primaryIssue\":\"merge_conflict\",\"secondaryIssues\":[],\"estimatedRisk\":\"low\"}"
+    },
+    {
+      "id": "PLCZhYNgxxwLUEchXe5Xa",
+      "session_id": "mc1Q0So42cm3Au6AYst5x",
+      "created_at": "2025-12-20T10:28:04.611Z",
+      "stage": "planner",
+      "input_ref": null,
+      "output_json": "{\"version\":1,\"timestamp\":\"2025-12-20T10:28:04.516Z\",\"issueType\":\"merge_conflict\",\"issueSummary\":\"Repository has unresolved merge conflicts that need manual resolution.\",\"risk\":\"medium\",\"steps\":[{\"id\":\"step-1\",\"title\":\"Review conflicting files\",\"description\":\"Examine the files with merge conflicts to understand what needs to be resolved.\",\"commands\":[\"git status\"],\"expected\":\"You will see a list of files with conflicts marked as \\\"both modified\\\".\",\"undo\":{\"possible\":true,\"commands\":[],\"description\":\"This is a read-only operation, no undo needed.\"},\"dangerous\":false,\"requiresUserInput\":false},{\"id\":\"step-2\",\"title\":\"Open and resolve conflicts\",\"description\":\"Edit each conflicting file and resolve the conflicts by choosing or combining changes.\",\"commands\":[\"# Edit files manually to resolve conflict markers\"],\"expected\":\"Files no longer contain <<<<<<, =======, or >>>>>>> markers.\",\"undo\":{\"possible\":true,\"commands\":[\"git checkout --conflict=merge <file>\"],\"description\":\"Restore conflict markers to try resolution again.\"},\"dangerous\":false,\"requiresUserInput\":true,\"userInputHint\":\"Remove conflict markers and keep desired code.\"},{\"id\":\"step-3\",\"title\":\"Stage resolved files\",\"description\":\"Mark conflicts as resolved by staging the files.\",\"commands\":[\"git add <resolved-files>\"],\"expected\":\"Files are staged and ready for commit.\",\"undo\":{\"possible\":true,\"commands\":[\"git reset HEAD <file>\"],\"description\":\"Unstage files if you need to make more changes.\"},\"dangerous\":false,\"requiresUserInput\":false},{\"id\":\"step-4\",\"title\":\"Complete the merge\",\"description\":\"Commit the resolved merge.\",\"commands\":[\"git commit\"],\"expected\":\"Merge is complete and working directory is clean.\",\"undo\":{\"possible\":true,\"commands\":[\"git reset --soft HEAD~1\"],\"description\":\"Undo the merge commit while keeping changes staged.\"},\"dangerous\":false,\"requiresUserInput\":false}],\"reflogRecovery\":{\"description\":\"If something goes wrong, you can always return to your pre-merge state using reflog.\",\"relevantEntries\":[\"HEAD@{1}\"],\"recoveryCommand\":\"git reset --hard HEAD@{1}\"}}"
+    },
+    {
+      "id": "b-qavTZYToSPLKXOXKhhN",
+      "session_id": "mc1Q0So42cm3Au6AYst5x",
+      "created_at": "2025-12-20T10:34:02.363Z",
+      "stage": "classifier",
+      "input_ref": null,
+      "output_json": "{\"primaryIssue\":\"merge_conflict\",\"secondaryIssues\":[],\"estimatedRisk\":\"low\"}"
+    },
+    {
+      "id": "jxwwGkKvaK1gskIURRWMe",
+      "session_id": "PRD_TagR_sZR7RsTFoPSB",
+      "created_at": "2025-12-20T10:58:23.450Z",
+      "stage": "collector",
+      "input_ref": "S6gSZhFd7CRLr9rOEc01_",
+      "output_json": "{\"hasConflicts\":true,\"conflictCount\":1,\"conflictFiles\":[\"app.js\"],\"isDetachedHead\":false,\"isRebaseInProgress\":false,\"rebaseType\":\"none\",\"currentBranch\":\"main\",\"aheadCount\":0,\"behindCount\":0,\"hasStagedChanges\":false,\"hasUnstagedChanges\":false,\"hasUntrackedFiles\":false,\"recentCheckouts\":[{\"from\":\"feature-logging\",\"to\":\"main\",\"reflogSelector\":\"HEAD@{1}\"},{\"from\":\"main\",\"to\":\"feature-logging\",\"reflogSelector\":\"HEAD@{3}\"}],\"recentResets\":[],\"primaryIssue\":\"merge_conflict\",\"secondaryIssues\":[],\"estimatedRisk\":\"low\"}"
+    },
+    {
+      "id": "8yGIQNLD3DDpQRBLNq8Vy",
+      "session_id": "PRD_TagR_sZR7RsTFoPSB",
+      "created_at": "2025-12-20T10:58:26.634Z",
+      "stage": "classifier",
+      "input_ref": null,
+      "output_json": "{\"primaryIssue\":\"merge_conflict\",\"secondaryIssues\":[],\"estimatedRisk\":\"low\"}"
+    },
+    {
+      "id": "BU1zFbrNdblTXrtbNnoVX",
+      "session_id": "PRD_TagR_sZR7RsTFoPSB",
+      "created_at": "2025-12-20T10:58:30.774Z",
+      "stage": "planner",
+      "input_ref": null,
+      "output_json": "{\"version\":1,\"timestamp\":\"2023-04-19T12:34:56Z\",\"issueType\":\"merge_conflict\",\"issueSummary\":\"Merge conflict detected in the app.js file between the main and feature-logging branches.\",\"risk\":\"low\",\"steps\":[{\"id\":\"step-1\",\"title\":\"Resolve merge conflict\",\"description\":\"Open the app.js file and review the conflicting changes. Resolve the conflict by keeping the desired changes from both branches.\",\"commands\":[\"git mergetool\"],\"expected\":\"The merge conflict in app.js is resolved, and the file is ready to be committed.\",\"undo\":{\"possible\":true,\"commands\":[\"git reset --merge\"],\"description\":\"If you need to undo the merge conflict resolution, use `git reset --merge` to revert the changes and restore the original conflicting versions of the file.\"},\"dangerous\":false,\"requiresUserInput\":true,\"userInputHint\":\"Review and resolve the conflicts in the app.js file using a merge tool or manually.\"}],\"reflogRecovery\":{\"description\":\"If you need to recover from the current state, you can use the Git reflog to revert to a previous commit.\",\"relevantEntries\":[\"HEAD@{0}\",\"HEAD@{1}\",\"HEAD@{2}\",\"HEAD@{3}\",\"HEAD@{4}\",\"HEAD@{5}\"],\"recoveryCommand\":\"git reset --hard HEAD@{N}\"}}"
+    },
+    {
+      "id": "IecM017Og_XekAGA9RcTT",
+      "session_id": "1YaUXMEiVPeOqOF0ucvFx",
+      "created_at": "2025-12-20T11:05:02.352Z",
+      "stage": "collector",
+      "input_ref": "fFT2z22qvrZqe1gBJbVKG",
+      "output_json": "{\"hasConflicts\":true,\"conflictCount\":1,\"conflictFiles\":[\"app.js\"],\"isDetachedHead\":false,\"isRebaseInProgress\":false,\"rebaseType\":\"none\",\"currentBranch\":\"main\",\"aheadCount\":0,\"behindCount\":0,\"hasStagedChanges\":false,\"hasUnstagedChanges\":false,\"hasUntrackedFiles\":false,\"recentCheckouts\":[{\"from\":\"feature-logging\",\"to\":\"main\",\"reflogSelector\":\"HEAD@{1}\"},{\"from\":\"main\",\"to\":\"feature-logging\",\"reflogSelector\":\"HEAD@{3}\"}],\"recentResets\":[],\"primaryIssue\":\"merge_conflict\",\"secondaryIssues\":[],\"estimatedRisk\":\"low\"}"
+    },
+    {
+      "id": "wAgVxQ27DnqGzIjqrYimR",
+      "session_id": "1YaUXMEiVPeOqOF0ucvFx",
+      "created_at": "2025-12-20T11:05:14.256Z",
+      "stage": "classifier",
+      "input_ref": null,
+      "output_json": "{\"primaryIssue\":\"merge_conflict\",\"secondaryIssues\":[],\"estimatedRisk\":\"low\"}"
+    },
+    {
+      "id": "zvnYcKIXFdO_2K5VYpmfr",
+      "session_id": "1YaUXMEiVPeOqOF0ucvFx",
+      "created_at": "2025-12-20T11:05:17.940Z",
+      "stage": "planner",
+      "input_ref": null,
+      "output_json": "{\"version\":1,\"timestamp\":\"2023-04-26T12:34:56Z\",\"issueType\":\"merge_conflict\",\"issueSummary\":\"Merge conflict detected in the app.js file between the main and feature-logging branches.\",\"risk\":\"low\",\"steps\":[{\"id\":\"step-1\",\"title\":\"Resolve merge conflict in app.js\",\"description\":\"Open the app.js file and manually resolve the merge conflict by choosing the desired changes from both branches.\",\"commands\":[\"git mergetool\",\"git add app.js\",\"git commit -m 'Resolve merge conflict in app.js'\"],\"expected\":\"The merge conflict in app.js is resolved, and the changes are committed to the repository.\",\"undo\":{\"possible\":true,\"commands\":[\"git reset HEAD~1\",\"git checkout -- app.js\"],\"description\":\"Undo the merge conflict resolution by resetting the last commit and checking out the original version of app.js.\"},\"dangerous\":false,\"requiresUserInput\":true,\"userInputHint\":\"Manually resolve the merge conflict in the app.js file.\"}],\"reflogRecovery\":{\"description\":\"If the merge conflict resolution is not satisfactory, you can use the Git reflog to recover to a previous state of the repository.\",\"relevantEntries\":[\"HEAD@{1}\",\"HEAD@{3}\"],\"recoveryCommand\":\"git reset --hard HEAD@{N}\"}}"
+    },
+    {
+      "id": "PO139XwcnKKIBFgqT7rKx",
+      "session_id": "1YaUXMEiVPeOqOF0ucvFx",
+      "created_at": "2025-12-20T11:05:41.262Z",
+      "stage": "classifier",
+      "input_ref": null,
+      "output_json": "{\"primaryIssue\":\"merge_conflict\",\"secondaryIssues\":[],\"estimatedRisk\":\"low\"}"
+    },
+    {
+      "id": "FUyRPiJ-lzDcAm5dttNTA",
+      "session_id": "1YaUXMEiVPeOqOF0ucvFx",
+      "created_at": "2025-12-20T11:05:45.578Z",
+      "stage": "planner",
+      "input_ref": null,
+      "output_json": "{\"version\":1,\"timestamp\":\"2023-04-19T12:34:56.789Z\",\"issueType\":\"merge_conflict\",\"issueSummary\":\"A merge conflict has occurred in the app.js file between the main branch and a feature branch.\",\"risk\":\"low\",\"steps\":[{\"id\":\"step-1\",\"title\":\"Resolve merge conflict\",\"description\":\"Open the app.js file and manually resolve the conflict by choosing the desired changes from each branch.\",\"commands\":[\"git merge --continue\"],\"expected\":\"The merge conflict is resolved, and the merge is completed.\",\"undo\":{\"possible\":true,\"commands\":[\"git merge --abort\"],\"description\":\"If you want to undo the merge, you can run `git merge --abort` to reset the repository to the state before the merge.\"},\"dangerous\":false,\"requiresUserInput\":true,\"userInputHint\":\"Manually resolve the conflict in the app.js file.\"}],\"reflogRecovery\":{\"description\":\"If you encounter any issues or need to revert to a previous state, you can use the Git reflog to recover your repository. The reflog contains a history of all the changes made to the repository's HEAD, which can be used to restore a previous state.\",\"relevantEntries\":[\"HEAD@{0}\",\"HEAD@{1}\",\"HEAD@{2}\",\"HEAD@{3}\",\"HEAD@{4}\",\"HEAD@{5}\"],\"recoveryCommand\":\"git reset --hard HEAD@{N}\"}}"
+    },
+    {
+      "id": "Qd8Ar7cASQsoZd9r2-c8F",
+      "session_id": "y6kDO-fWsaDCkyMFtHLX8",
+      "created_at": "2025-12-20T11:21:16.628Z",
+      "stage": "collector",
+      "input_ref": "l0d73FHdTU90OYFXPNCMn",
+      "output_json": "{\"hasConflicts\":true,\"conflictCount\":1,\"conflictFiles\":[\"app.js\"],\"isDetachedHead\":false,\"isRebaseInProgress\":false,\"rebaseType\":\"none\",\"currentBranch\":\"main\",\"aheadCount\":0,\"behindCount\":0,\"hasStagedChanges\":false,\"hasUnstagedChanges\":false,\"hasUntrackedFiles\":false,\"recentCheckouts\":[{\"from\":\"feature-logging\",\"to\":\"main\",\"reflogSelector\":\"HEAD@{1}\"},{\"from\":\"main\",\"to\":\"feature-logging\",\"reflogSelector\":\"HEAD@{3}\"}],\"recentResets\":[],\"primaryIssue\":\"merge_conflict\",\"secondaryIssues\":[],\"estimatedRisk\":\"low\"}"
+    },
+    {
+      "id": "lc8rDv6A-M57WwBKjnRnD",
+      "session_id": "y6kDO-fWsaDCkyMFtHLX8",
+      "created_at": "2025-12-20T11:21:47.149Z",
+      "stage": "classifier",
+      "input_ref": null,
+      "output_json": "{\"primaryIssue\":\"merge_conflict\",\"secondaryIssues\":[],\"estimatedRisk\":\"low\"}"
+    },
+    {
+      "id": "uWvku24A-KdTrbOFUZpWX",
+      "session_id": "y6kDO-fWsaDCkyMFtHLX8",
+      "created_at": "2025-12-20T11:21:51.023Z",
+      "stage": "planner",
+      "input_ref": null,
+      "output_json": "{\"version\":1,\"timestamp\":\"2023-04-22T12:34:56.789Z\",\"issueType\":\"merge_conflict\",\"issueSummary\":\"Merge conflict in app.js between current main branch and a conflicting feature branch\",\"risk\":\"low\",\"steps\":[{\"id\":\"step-1\",\"title\":\"Resolve merge conflict in app.js\",\"description\":\"Open the app.js file and manually resolve the merge conflict by choosing the desired changes from each branch. Once resolved, stage the changes and commit the resolved merge.\",\"commands\":[\"git add app.js\",\"git commit -m 'Resolve merge conflict in app.js'\"],\"expected\":\"The merge conflict in app.js is resolved and the changes are committed to the main branch.\",\"undo\":{\"possible\":true,\"commands\":[\"git reset --hard HEAD~1\"],\"description\":\"Undo the last commit that resolved the merge conflict by resetting the branch to the previous commit.\"},\"dangerous\":false,\"requiresUserInput\":true,\"userInputHint\":\"Review the conflicting changes in app.js and choose the desired changes to resolve the conflict.\"}],\"reflogRecovery\":{\"description\":\"If the manual resolution of the merge conflict is not successful, you can use the git reflog to recover to a previous state of the repository.\",\"relevantEntries\":[\"HEAD@{0}\",\"HEAD@{1}\",\"HEAD@{2}\",\"HEAD@{3}\",\"HEAD@{4}\",\"HEAD@{5}\"],\"recoveryCommand\":\"git reset --hard HEAD@{N}\"}}"
+    },
+    {
+      "id": "nGQgc7cf4kcSBfNmoL-aV",
+      "session_id": "2Rfg_B7RGwKrj3RLJX-nr",
+      "created_at": "2025-12-20T12:00:09.716Z",
+      "stage": "collector",
+      "input_ref": "2NThxxPkuUPtYjw2xxvKK",
+      "output_json": "{\"hasConflicts\":true,\"conflictCount\":1,\"conflictFiles\":[\"app.js\"],\"isDetachedHead\":false,\"isRebaseInProgress\":false,\"rebaseType\":\"none\",\"currentBranch\":\"main\",\"aheadCount\":0,\"behindCount\":0,\"hasStagedChanges\":false,\"hasUnstagedChanges\":false,\"hasUntrackedFiles\":false,\"recentCheckouts\":[{\"from\":\"feature-logging\",\"to\":\"main\",\"reflogSelector\":\"HEAD@{1}\"},{\"from\":\"main\",\"to\":\"feature-logging\",\"reflogSelector\":\"HEAD@{3}\"}],\"recentResets\":[],\"primaryIssue\":\"merge_conflict\",\"secondaryIssues\":[],\"estimatedRisk\":\"low\"}"
+    },
+    {
+      "id": "trace_1766232022051_1mmcwi",
+      "session_id": "2Rfg_B7RGwKrj3RLJX-nr",
+      "created_at": "2025-12-20T12:00:22.053Z",
+      "stage": "visual_explainer",
+      "input_ref": "2NThxxPkuUPtYjw2xxvKK",
+      "output_json": "{\"filePath\":\"app.js\",\"blockIndex\":0,\"whatOursChanged\":\"The 'greet' function throws an error if 'name' is not provided, and it logs the greeting using 'name.toUpperCase()'. The 'calculate' function checks if the arguments are numbers, and it simply returns the sum of the two numbers.\",\"whatTheirsChanged\":\"The 'greet' function logs the greeting using the provided 'name' as is, without converting it to uppercase. The 'calculate' function logs the input arguments and the result before returning the sum.\",\"whyConflict\":\"The conflict arises because the 'greet' and 'calculate' functions have been modified in both the current branch ('main') and the incoming changes. The changes are not compatible, and Git cannot automatically determine which version should be kept.\",\"conflictType\":\"logic\",\"suggestedStrategy\":\"Review the changes in both versions and decide which functionality is more appropriate for your use case. You may want to keep the error handling and uppercase conversion from the current branch, and the logging functionality from the incoming changes. Manually merge the two versions, ensuring that the final code meets your requirements.\",\"complexity\":\"moderate\"}"
+    },
+    {
+      "id": "V409Poeh4u5gBnYSl7K2u",
+      "session_id": "2Rfg_B7RGwKrj3RLJX-nr",
+      "created_at": "2025-12-20T12:00:32.862Z",
+      "stage": "classifier",
+      "input_ref": null,
+      "output_json": "{\"primaryIssue\":\"merge_conflict\",\"secondaryIssues\":[],\"estimatedRisk\":\"low\"}"
+    },
+    {
+      "id": "pGQNYfECja2-JIGTmC1b0",
+      "session_id": "2Rfg_B7RGwKrj3RLJX-nr",
+      "created_at": "2025-12-20T12:00:38.742Z",
+      "stage": "planner",
+      "input_ref": null,
+      "output_json": "{\"version\":1,\"timestamp\":\"2023-04-20T12:00:00Z\",\"issueType\":\"merge_conflict\",\"issueSummary\":\"A merge conflict has occurred in the app.js file, specifically in lines 2-22.\",\"risk\":\"low\",\"steps\":[{\"id\":\"step-1\",\"title\":\"Resolve the merge conflict\",\"description\":\"Open the app.js file and manually resolve the merge conflict by choosing the desired changes from the conflicting versions.\",\"commands\":[\"git status\",\"git mergetool\"],\"expected\":\"The merge conflict in app.js is resolved, and the file is ready to be added and committed.\",\"undo\":{\"possible\":true,\"commands\":[\"git reset --hard HEAD\"],\"description\":\"If you need to undo the conflict resolution, you can use `git reset --hard HEAD` to revert the changes and return to the pre-conflict state.\"},\"dangerous\":false,\"requiresUserInput\":true,\"userInputHint\":\"Manually resolve the merge conflict in the app.js file.\"}],\"reflogRecovery\":{\"description\":\"If you need to recover a previous state of the repository, you can use the git reflog to find the relevant commit and reset the branch to that point.\",\"relevantEntries\":[\"HEAD@{0}\",\"HEAD@{1}\",\"HEAD@{2}\",\"HEAD@{3}\",\"HEAD@{4}\",\"HEAD@{5}\"],\"recoveryCommand\":\"git reset --hard HEAD@{N}\"}}"
+    }
+  ]
+}
