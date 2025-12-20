@@ -5,6 +5,7 @@ export const IssueTypeSchema = z.enum([
   'merge_conflict',
   'detached_head',
   'rebase_in_progress',
+  'clean',
   'unknown',
 ]);
 

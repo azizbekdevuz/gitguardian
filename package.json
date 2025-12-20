@@ -7,7 +7,6 @@
     "build:cli": "pnpm --filter @gitguard/cli build",
     "start": "pnpm start:web & pnpm start:cli",
     "start:web": "pnpm --filter @gitguard/web start",
-    "start:cli": "pnpm --filter @gitguard/cli start",
     "dev:web": "pnpm --filter @gitguard/web dev",
     "dev:cli": "pnpm --filter @gitguard/cli dev",
     "dev": "pnpm dev:web & pnpm dev:cli",

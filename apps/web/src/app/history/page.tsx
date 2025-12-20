@@ -1,23 +1,18 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { HistoryPage } from '../components/HistoryPage';
+import { HistoryPage } from '@/components/HistoryPage';
 
 export default function History() {
   const router = useRouter();
 
-  const handleNavigateToHome = () => {
-    router.push('/');
-  };
-
-  const handleNavigateToRecovery = (id: string) => {
-    router.push(`/recovery/${id}`);
+  const handleNavigateToSession = (id: string) => {
+    router.push(`/session/${id}`);
   };
 
   return (
     <HistoryPage
-      onNavigateToHome={handleNavigateToHome}
-      onNavigateToRecovery={handleNavigateToRecovery}
+      onNavigateToSession={handleNavigateToSession}
     />
   );
 }
