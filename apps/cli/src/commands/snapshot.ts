@@ -15,9 +15,18 @@ interface SnapshotOptions {
 }
 
 export async function snapshotCommand(options: SnapshotOptions): Promise<void> {
+  const requestId = `snapshot-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  
+  console.error(`[CLI:SNAPSHOT:${requestId}] ========================================`);
+  console.error(`[CLI:SNAPSHOT:${requestId}] 📸 Starting snapshot generation`);
+  console.error(`[CLI:SNAPSHOT:${requestId}] Output: ${options.output || 'stdout'}`);
+  console.error(`[CLI:SNAPSHOT:${requestId}] Pretty: ${options.pretty || false}`);
+
   try {
+    console.error(`[CLI:SNAPSHOT:${requestId}] 📥 Collecting Git repository information...`);
     // Collect git information
     const gitInfo = await collectGitInfo();
+    console.error(`[CLI:SNAPSHOT:${requestId}] ✅ Git info collected`);
 
     // Parse status
     const statusInfo = parseStatus(gitInfo.status);
@@ -76,8 +85,11 @@ export async function snapshotCommand(options: SnapshotOptions): Promise<void> {
       rawBranches: gitInfo.branches,
     };
 
+    console.error(`[CLI:SNAPSHOT:${requestId}] ✅ Validating snapshot with schema...`);
     // Validate with Zod
     const validated = SnapshotV1Schema.parse(snapshot);
+    console.error(`[CLI:SNAPSHOT:${requestId}] ✅ Snapshot validated`);
+    console.error(`[CLI:SNAPSHOT:${requestId}]    Snapshot size: ${JSON.stringify(validated).length} bytes`);
 
     // Output
     const jsonOutput = options.pretty
@@ -86,17 +98,21 @@ export async function snapshotCommand(options: SnapshotOptions): Promise<void> {
 
     if (options.output) {
       writeFileSync(options.output, jsonOutput, 'utf-8');
-      console.error(`Snapshot written to: ${options.output}`);
+      console.error(`[CLI:SNAPSHOT:${requestId}] ✅ Snapshot written to: ${options.output}`);
     } else {
       console.log(jsonOutput);
+      console.error(`[CLI:SNAPSHOT:${requestId}] ✅ Snapshot output to stdout`);
     }
+    console.error(`[CLI:SNAPSHOT:${requestId}] ========================================`);
   } catch (error) {
+    console.error(`[CLI:SNAPSHOT:${requestId}] ❌ Snapshot generation failed`);
     if (error instanceof Error) {
-      console.error(`Error: ${error.message}`);
+      console.error(`[CLI:SNAPSHOT:${requestId}]    Error: ${error.message}`);
       if (error.message.includes('not a git repository')) {
         console.error('Please run this command from within a git repository.');
       }
     }
+    console.error(`[CLI:SNAPSHOT:${requestId}] ========================================`);
     process.exit(1);
   }
 }

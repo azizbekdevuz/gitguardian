@@ -6,18 +6,19 @@ import os
 import time
 import json
 import logging
-from typing import Optional, TypedDict
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-
-# SpoonOS imports
-from spoon_ai.graph import StateGraph, END
 from spoon_ai.chat import ChatBot
-from spoon_ai.agents.toolcall import ToolCallAgent
-from spoon_ai.tools import ToolManager
-from spoon_ai.tools.base import BaseTool
+
+# Handle both direct execution and module import
+try:
+    from .graph import create_analysis_graph
+    from .models import AnalyzeRequest, AnalyzeResponse, GitAnalysisState
+except ImportError:
+    # When running directly (python main.py), use absolute imports
+    from graph import create_analysis_graph
+    from models import AnalyzeRequest, AnalyzeResponse, GitAnalysisState
 
 load_dotenv()
 
@@ -51,660 +52,8 @@ llm = ChatBot(
     model_name=MODEL,
 )
 
-
-# ==========================================
-# SpoonOS Graph State Definition
-# ==========================================
-
-class GitAnalysisState(TypedDict):
-    """State that flows through the SpoonOS graph pipeline."""
-    # Input
-    snapshot: dict
-    options: dict
-
-    # Stage outputs
-    issue_type: str
-    risk_level: str
-    repo_graph: dict
-    conflicts: list
-    signals: dict
-
-    # AI-generated outputs
-    summary: str
-    conflict_explanations: dict
-    plan_steps: list
-
-    # Metadata
-    stage_traces: list
-    error: str
-
-
-# ==========================================
-# SpoonOS Tools
-# ==========================================
-
-class DetectIssueTool(BaseTool):
-    """Tool to detect the primary issue type from a git snapshot."""
-    name: str = "detect_issue"
-    description: str = "Analyze git snapshot to detect the primary issue (merge_conflict, detached_head, rebase_in_progress, clean)"
-    parameters: dict = {
-        "type": "object",
-        "properties": {
-            "snapshot": {"type": "object", "description": "Git repository snapshot"}
-        },
-        "required": ["snapshot"]
-    }
-
-    async def execute(self, snapshot: dict) -> dict:
-        unmerged = snapshot.get("unmergedFiles", [])
-        is_detached = snapshot.get("isDetachedHead", False)
-        rebase_state = snapshot.get("rebaseState", {})
-
-        if unmerged and len(unmerged) > 0:
-            issue_type = "merge_conflict"
-            risk = "high" if len(unmerged) > 3 else "medium"
-        elif rebase_state.get("inProgress", False):
-            issue_type = "rebase_in_progress"
-            risk = "medium"
-        elif is_detached:
-            issue_type = "detached_head"
-            risk = "medium"
-        else:
-            staged = snapshot.get("stagedFiles", [])
-            modified = snapshot.get("modifiedFiles", [])
-            if not staged and not modified:
-                issue_type = "clean"
-                risk = "low"
-            else:
-                issue_type = "unknown"
-                risk = "low"
-
-        return {"issue_type": issue_type, "risk_level": risk}
-
-
-class BuildGraphTool(BaseTool):
-    """Tool to build repository visualization graph."""
-    name: str = "build_graph"
-    description: str = "Build a visual graph representation of the repository state"
-    parameters: dict = {
-        "type": "object",
-        "properties": {
-            "snapshot": {"type": "object", "description": "Git repository snapshot"}
-        },
-        "required": ["snapshot"]
-    }
-
-    async def execute(self, snapshot: dict) -> dict:
-        nodes = []
-        edges = []
-
-        branch = snapshot.get("branch", {})
-        head_oid = branch.get("oid", "")[:7]
-        head_name = branch.get("head", "HEAD")
-        is_detached = snapshot.get("isDetachedHead", False)
-
-        # Add HEAD node
-        nodes.append({
-            "id": "head",
-            "type": "head",
-            "label": "HEAD",
-            "sha": head_oid,
-            "isCurrent": True,
-            "isDetached": is_detached,
-            "x": 400, "y": 50  # Position for visualization
-        })
-
-        # Add current branch
-        if not is_detached and head_name:
-            nodes.append({
-                "id": f"branch-{head_name}",
-                "type": "branch",
-                "label": head_name,
-                "sha": head_oid,
-                "isCurrent": True,
-                "x": 550, "y": 50
-            })
-            edges.append({"from": "head", "to": f"branch-{head_name}", "type": "ref"})
-
-        # Add commits from log
-        recent_log = snapshot.get("recentLog", [])[:8]
-        for i, entry in enumerate(recent_log):
-            commit_id = f"commit-{i}"
-            sha = entry.get("hash", "")[:7]
-            message = entry.get("message", "")[:40]
-            refs = entry.get("refs", [])
-
-            nodes.append({
-                "id": commit_id,
-                "type": "commit",
-                "label": message,
-                "sha": sha,
-                "isCurrent": (i == 0),
-                "x": 400,
-                "y": 120 + (i * 80)
-            })
-
-            # Add refs
-            for j, ref in enumerate(refs):
-                if ref and not ref.startswith("HEAD"):
-                    ref_id = f"ref-{ref.replace('/', '-')}"
-                    ref_type = "remote" if "/" in ref else "branch"
-                    nodes.append({
-                        "id": ref_id,
-                        "type": ref_type,
-                        "label": ref,
-                        "sha": sha,
-                        "x": 550 + (j * 100),
-                        "y": 120 + (i * 80)
-                    })
-                    edges.append({"from": ref_id, "to": commit_id, "type": "ref"})
-
-            # Connect to previous commit
-            if i > 0:
-                edges.append({"from": f"commit-{i-1}", "to": commit_id, "type": "parent"})
-
-        # Connect HEAD to first commit
-        if recent_log:
-            edges.append({"from": "head", "to": "commit-0", "type": "pointer"})
-
-        # Add merge head if exists
-        merge_head = snapshot.get("mergeHead")
-        if merge_head:
-            nodes.append({
-                "id": "merge-head",
-                "type": "merge",
-                "label": "MERGE_HEAD",
-                "sha": merge_head[:7],
-                "x": 250, "y": 50
-            })
-            edges.append({"from": "merge-head", "to": "commit-0", "type": "merge"})
-
-        return {
-            "nodes": nodes,
-            "edges": edges,
-            "headRef": head_oid,
-            "mergeHeadRef": merge_head[:7] if merge_head else None
-        }
-
-
-class ExtractConflictsTool(BaseTool):
-    """Tool to extract and structure conflict information."""
-    name: str = "extract_conflicts"
-    description: str = "Extract conflict files and hunks from snapshot"
-    parameters: dict = {
-        "type": "object",
-        "properties": {
-            "snapshot": {"type": "object"},
-            "max_files": {"type": "integer", "default": 10},
-            "max_hunks": {"type": "integer", "default": 5}
-        },
-        "required": ["snapshot"]
-    }
-
-    async def execute(self, snapshot: dict, max_files: int = 10, max_hunks: int = 5) -> list:
-        conflicts = []
-        unmerged = snapshot.get("unmergedFiles", [])[:max_files]
-
-        for file_data in unmerged:
-            path = file_data.get("path", "unknown")
-            blocks = file_data.get("conflictBlocks", [])[:max_hunks]
-
-            hunks = []
-            for i, block in enumerate(blocks):
-                hunks.append({
-                    "index": i,
-                    "startLine": block.get("startLine"),
-                    "endLine": block.get("endLine"),
-                    "baseText": block.get("context", ""),
-                    "oursText": block.get("oursContent", ""),
-                    "theirsText": block.get("theirsContent", ""),
-                    "linesAdded": len(block.get("oursContent", "").split("\n")),
-                    "linesRemoved": len(block.get("theirsContent", "").split("\n")),
-                })
-
-            conflicts.append({
-                "path": path,
-                "hunks": hunks,
-                "hunkCount": len(hunks),
-                "severity": "high" if len(hunks) > 2 else "medium" if len(hunks) > 1 else "low"
-            })
-
-        return conflicts
-
-
-# ==========================================
-# SpoonOS Graph Nodes
-# ==========================================
-
-async def detect_issue_node(state: GitAnalysisState) -> dict:
-    """Stage 1: Detect issue type and risk level."""
-    start = time.time()
-    snapshot = state["snapshot"]
-    logger.info("🔍 [detect_issue] Starting issue detection...")
-
-    tool = DetectIssueTool()
-    result = await tool.execute(snapshot)
-    
-    duration_ms = int((time.time() - start) * 1000)
-    logger.info(f"✅ [detect_issue] Completed in {duration_ms}ms - Issue: {result.get('issue_type')}, Risk: {result.get('risk_level')}")
-
-    trace = {
-        "stage": "detect_issue",
-        "duration_ms": duration_ms,
-        "output": result
-    }
-
-    return {
-        "issue_type": result["issue_type"],
-        "risk_level": result["risk_level"],
-        "stage_traces": state.get("stage_traces", []) + [trace]
-    }
-
-
-async def build_graph_node(state: GitAnalysisState) -> dict:
-    """Stage 2: Build repository visualization graph."""
-    start = time.time()
-    logger.info("📊 [build_graph] Building repository graph...")
-
-    tool = BuildGraphTool()
-    graph = await tool.execute(state["snapshot"])
-    
-    duration_ms = int((time.time() - start) * 1000)
-    node_count = len(graph.get("nodes", []))
-    edge_count = len(graph.get("edges", []))
-    logger.info(f"✅ [build_graph] Completed in {duration_ms}ms - Nodes: {node_count}, Edges: {edge_count}")
-
-    trace = {
-        "stage": "build_graph",
-        "duration_ms": int((time.time() - start) * 1000),
-        "output": {"nodes": len(graph["nodes"]), "edges": len(graph["edges"])}
-    }
-
-    return {
-        "repo_graph": graph,
-        "stage_traces": state.get("stage_traces", []) + [trace]
-    }
-
-
-async def extract_conflicts_node(state: GitAnalysisState) -> dict:
-    """Stage 3: Extract conflict information."""
-    start = time.time()
-    logger.info("🔧 [extract_conflicts] Extracting conflict information...")
-
-    if state["issue_type"] != "merge_conflict":
-        logger.info("⏭️  [extract_conflicts] Skipped - not a merge conflict")
-        return {"conflicts": [], "stage_traces": state.get("stage_traces", [])}
-
-    tool = ExtractConflictsTool()
-    options = state.get("options", {})
-    conflicts = await tool.execute(
-        state["snapshot"],
-        max_files=options.get("maxConflictFiles", 10),
-        max_hunks=options.get("maxHunksPerFile", 5)
-    )
-    
-    duration_ms = int((time.time() - start) * 1000)
-    conflict_count = len(conflicts)
-    logger.info(f"✅ [extract_conflicts] Completed in {duration_ms}ms - Found {conflict_count} conflict file(s)")
-
-    trace = {
-        "stage": "extract_conflicts",
-        "duration_ms": duration_ms,
-        "output": {"conflict_count": conflict_count}
-    }
-
-    return {
-        "conflicts": conflicts,
-        "stage_traces": state.get("stage_traces", []) + [trace]
-    }
-
-
-async def collect_signals_node(state: GitAnalysisState) -> dict:
-    """Stage 4: Collect normalized signals for AI analysis."""
-    start = time.time()
-    logger.info("📡 [collect_signals] Collecting repository signals...")
-    snapshot = state["snapshot"]
-
-    signals = {
-        "primaryIssue": state["issue_type"],
-        "riskLevel": state["risk_level"],
-        "conflictCount": len(state.get("conflicts", [])),
-        "isDetachedHead": snapshot.get("isDetachedHead", False),
-        "isRebaseInProgress": snapshot.get("rebaseState", {}).get("inProgress", False),
-        "currentBranch": snapshot.get("branch", {}).get("head", "unknown"),
-        "hasStagedChanges": len(snapshot.get("stagedFiles", [])) > 0,
-        "hasUnstagedChanges": len(snapshot.get("modifiedFiles", [])) > 0,
-        "hasUntrackedFiles": len(snapshot.get("untrackedFiles", [])) > 0,
-        "recentActions": [
-            entry.get("action", "") for entry in snapshot.get("recentReflog", [])[:5]
-        ],
-    }
-
-    duration_ms = int((time.time() - start) * 1000)
-    logger.info(f"✅ [collect_signals] Completed in {duration_ms}ms - Primary issue: {signals.get('primaryIssue')}")
-
-    trace = {
-        "stage": "collect_signals",
-        "duration_ms": duration_ms,
-        "output": signals
-    }
-
-    return {
-        "signals": signals,
-        "stage_traces": state.get("stage_traces", []) + [trace]
-    }
-
-
-async def generate_analysis_node(state: GitAnalysisState) -> dict:
-    """Stage 5: Use LLM to generate analysis, explanations, and plan."""
-    start = time.time()
-    logger.info("🤖 [generate_analysis] Generating AI analysis and recovery plan...")
-
-    snapshot = state["snapshot"]
-    signals = state["signals"]
-    conflicts = state.get("conflicts", [])
-
-    # Build detailed context for LLM
-    context = f"""You are GitGuard, an expert Git recovery assistant. Analyze this repository state and provide specific, actionable guidance.
-
-## Current Situation
-- **Issue Type**: {signals["primaryIssue"].replace("_", " ").title()}
-- **Risk Level**: {signals["riskLevel"].upper()}
-- **Branch**: {signals["currentBranch"]}
-- **Conflicts**: {signals["conflictCount"]} file(s)
-- **Detached HEAD**: {"Yes" if signals["isDetachedHead"] else "No"}
-- **Rebase in Progress**: {"Yes" if signals["isRebaseInProgress"] else "No"}
-
-## Repository State
-- Staged files: {len(snapshot.get("stagedFiles", []))}
-- Modified files: {len(snapshot.get("modifiedFiles", []))}
-- Untracked files: {len(snapshot.get("untrackedFiles", []))}
-
-## Recent Git Actions
-{chr(10).join(f"- {action}" for action in signals["recentActions"]) if signals["recentActions"] else "No recent actions recorded"}
-"""
-
-    if conflicts:
-        context += "\n## Conflict Details\n"
-        for cf in conflicts[:5]:
-            context += f"\n### {cf['path']} ({cf['hunkCount']} hunks, {cf['severity']} severity)\n"
-            for hunk in cf["hunks"][:2]:
-                context += f"""
-**Hunk {hunk['index'] + 1}** (lines {hunk.get('startLine', '?')}-{hunk.get('endLine', '?')}):
-- OURS ({hunk['linesAdded']} lines):
-```
-{hunk['oursText'][:300]}{'...' if len(hunk['oursText']) > 300 else ''}
-```
-- THEIRS ({hunk['linesRemoved']} lines):
-```
-{hunk['theirsText'][:300]}{'...' if len(hunk['theirsText']) > 300 else ''}
-```
-"""
-
-    prompt = f"""{context}
-
-## Your Task
-Provide a comprehensive analysis in JSON format with these fields:
-
-1. **summary**: A clear 2-3 sentence explanation of what happened and why (be specific to THIS situation, not generic)
-
-2. **conflictExplanations**: For each conflict file, provide:
-   - "path": file path
-   - "whatHappened": Specific explanation of what each side changed
-   - "whyConflict": Why these changes conflict
-   - "recommendation": Specific resolution strategy (keep ours, keep theirs, or how to combine)
-   - "priority": "high", "medium", or "low"
-
-3. **planSteps**: Array of specific recovery steps, each with:
-   - "title": Clear action title
-   - "description": Detailed explanation of what this step does and why
-   - "commands": Exact git commands to run (with actual file names from the conflicts)
-   - "expectedOutput": What user should see after running
-   - "verify": Commands to verify success
-   - "undo": Commands to undo if something goes wrong
-   - "dangerLevel": "safe", "caution", or "dangerous"
-   - "estimatedTime": "quick" (< 1 min), "moderate" (1-5 min), or "careful" (> 5 min)
-
-4. **quickActions**: Array of 2-3 one-click actions for common resolutions:
-   - "label": Button label
-   - "command": Single git command
-   - "description": What it does
-
-Be SPECIFIC to this user's actual situation. Reference actual file names and branch names. Focus on SAFE, REVERSIBLE solutions.
-
-Respond with ONLY valid JSON, no markdown code blocks."""
-
-    try:
-        response = await llm.chat(prompt)
-        content = response if isinstance(response, str) else response.content
-
-        # Parse JSON response
-        try:
-            result = json.loads(content)
-        except json.JSONDecodeError:
-            # Try to extract from markdown
-            if "```json" in content:
-                json_str = content.split("```json")[1].split("```")[0]
-                result = json.loads(json_str)
-            elif "```" in content:
-                json_str = content.split("```")[1].split("```")[0]
-                result = json.loads(json_str)
-            else:
-                raise
-
-        trace = {
-            "stage": "generate_analysis",
-            "duration_ms": int((time.time() - start) * 1000),
-            "output": {"has_summary": "summary" in result, "plan_steps": len(result.get("planSteps", []))}
-        }
-
-        return {
-            "summary": result.get("summary", "Analysis complete."),
-            "conflict_explanations": {
-                exp["path"]: exp for exp in result.get("conflictExplanations", [])
-            },
-            "plan_steps": result.get("planSteps", []),
-            "stage_traces": state.get("stage_traces", []) + [trace]
-        }
-
-    except Exception as e:
-        trace = {
-            "stage": "generate_analysis",
-            "duration_ms": int((time.time() - start) * 1000),
-            "error": str(e)
-        }
-
-        # Fallback plan
-        return {
-            "summary": f"Detected {signals['primaryIssue'].replace('_', ' ')} in your repository.",
-            "conflict_explanations": {},
-            "plan_steps": generate_fallback_plan(signals["primaryIssue"], snapshot, conflicts),
-            "stage_traces": state.get("stage_traces", []) + [trace]
-        }
-
-
-def generate_fallback_plan(issue_type: str, snapshot: dict, conflicts: list) -> list:
-    """Generate fallback plan without AI."""
-    branch = snapshot.get("branch", {}).get("head", "main")
-
-    if issue_type == "merge_conflict":
-        conflict_files = [c["path"] for c in conflicts]
-        return [
-            {
-                "title": "Review Conflict Files",
-                "description": f"You have conflicts in {len(conflicts)} file(s): {', '.join(conflict_files[:3])}. Review each to understand what changed.",
-                "commands": ["git status", "git diff --name-only --diff-filter=U"],
-                "expectedOutput": "List of files with UU (unmerged) status",
-                "verify": ["git status"],
-                "undo": [],
-                "dangerLevel": "safe",
-                "estimatedTime": "quick"
-            },
-            {
-                "title": "Resolve Conflicts",
-                "description": "Open each conflicted file and resolve the conflict markers (<<<<<<, ======, >>>>>>).",
-                "commands": [f"# Edit {f}" for f in conflict_files[:3]],
-                "expectedOutput": "Files no longer contain conflict markers",
-                "verify": ["git diff"],
-                "undo": ["git checkout --conflict=merge <file>"],
-                "dangerLevel": "safe",
-                "estimatedTime": "careful"
-            },
-            {
-                "title": "Stage Resolved Files",
-                "description": "Mark conflicts as resolved by staging the files.",
-                "commands": [f"git add {f}" for f in conflict_files[:3]],
-                "expectedOutput": "Files moved from 'Unmerged' to 'Staged'",
-                "verify": ["git status"],
-                "undo": ["git reset HEAD <file>"],
-                "dangerLevel": "safe",
-                "estimatedTime": "quick"
-            },
-            {
-                "title": "Complete Merge",
-                "description": "Commit the merge resolution.",
-                "commands": ["git commit -m 'Resolve merge conflicts'"],
-                "expectedOutput": "Merge commit created",
-                "verify": ["git log -1"],
-                "undo": ["git reset --soft HEAD~1"],
-                "dangerLevel": "caution",
-                "estimatedTime": "quick"
-            }
-        ]
-    elif issue_type == "detached_head":
-        return [
-            {
-                "title": "Check Current Position",
-                "description": "See where HEAD is pointing and what branches exist.",
-                "commands": ["git log --oneline -5", "git branch -a"],
-                "expectedOutput": "Current commit history and available branches",
-                "verify": ["git status"],
-                "undo": [],
-                "dangerLevel": "safe",
-                "estimatedTime": "quick"
-            },
-            {
-                "title": "Save Your Work",
-                "description": "Create a branch to preserve current commits before moving.",
-                "commands": ["git branch temp-save-work"],
-                "expectedOutput": "New branch 'temp-save-work' created at current commit",
-                "verify": ["git branch"],
-                "undo": ["git branch -d temp-save-work"],
-                "dangerLevel": "safe",
-                "estimatedTime": "quick"
-            },
-            {
-                "title": f"Return to {branch}",
-                "description": f"Switch back to your main working branch '{branch}'.",
-                "commands": [f"git checkout {branch}"],
-                "expectedOutput": f"Switched to branch '{branch}'",
-                "verify": ["git status"],
-                "undo": ["git checkout temp-save-work"],
-                "dangerLevel": "safe",
-                "estimatedTime": "quick"
-            }
-        ]
-    elif issue_type == "rebase_in_progress":
-        return [
-            {
-                "title": "Check Rebase Status",
-                "description": "Understand where you are in the rebase process.",
-                "commands": ["git status", "git rebase --show-current-patch"],
-                "expectedOutput": "Current rebase step and conflict details",
-                "verify": [],
-                "undo": [],
-                "dangerLevel": "safe",
-                "estimatedTime": "quick"
-            },
-            {
-                "title": "Option A: Continue Rebase",
-                "description": "If you've resolved conflicts, continue the rebase.",
-                "commands": ["git add .", "git rebase --continue"],
-                "expectedOutput": "Rebase continues to next commit or completes",
-                "verify": ["git status"],
-                "undo": ["git rebase --abort"],
-                "dangerLevel": "caution",
-                "estimatedTime": "moderate"
-            },
-            {
-                "title": "Option B: Abort Rebase",
-                "description": "Cancel the rebase and return to the original state.",
-                "commands": ["git rebase --abort"],
-                "expectedOutput": "Returns to state before rebase started",
-                "verify": ["git status", "git log -3"],
-                "undo": [],
-                "dangerLevel": "safe",
-                "estimatedTime": "quick"
-            }
-        ]
-    else:
-        return [
-            {
-                "title": "Check Status",
-                "description": "Review the current repository state.",
-                "commands": ["git status", "git log --oneline -5"],
-                "expectedOutput": "Current branch and recent commits",
-                "verify": [],
-                "undo": [],
-                "dangerLevel": "safe",
-                "estimatedTime": "quick"
-            }
-        ]
-
-
-# ==========================================
-# Build SpoonOS Graph
-# ==========================================
-
-def create_analysis_graph() -> StateGraph:
-    """Create the SpoonOS graph for git analysis pipeline."""
-    graph = StateGraph(GitAnalysisState)
-
-    # Add nodes
-    graph.add_node("detect_issue", detect_issue_node)
-    graph.add_node("build_graph", build_graph_node)
-    graph.add_node("extract_conflicts", extract_conflicts_node)
-    graph.add_node("collect_signals", collect_signals_node)
-    graph.add_node("generate_analysis", generate_analysis_node)
-
-    # Set entry point
-    graph.set_entry_point("detect_issue")
-
-    # Define edges (sequential pipeline)
-    graph.add_edge("detect_issue", "build_graph")
-    graph.add_edge("build_graph", "extract_conflicts")
-    graph.add_edge("extract_conflicts", "collect_signals")
-    graph.add_edge("collect_signals", "generate_analysis")
-    graph.add_edge("generate_analysis", END)
-
-    return graph.compile()
-
-
 # Create the compiled graph
-analysis_pipeline = create_analysis_graph()
-
-
-# ==========================================
-# Request/Response Models
-# ==========================================
-
-class AnalyzeOptions(BaseModel):
-    includeGraph: bool = True
-    maxConflictFiles: int = 10
-    maxHunksPerFile: int = 5
-
-
-class AnalyzeRequest(BaseModel):
-    snapshot: dict
-    options: Optional[AnalyzeOptions] = None
-
-
-class AnalyzeResponse(BaseModel):
-    success: bool
-    analysis: Optional[dict] = None
-    error: Optional[str] = None
-    durationMs: Optional[int] = None
-    pipelineTraces: Optional[list] = None
+analysis_pipeline = create_analysis_graph(llm)
 
 
 # ==========================================
@@ -726,6 +75,17 @@ async def health_check():
 async def analyze_snapshot(request: AnalyzeRequest):
     """Analyze a git snapshot using SpoonOS graph pipeline."""
     start_time = time.time()
+    request_id = f"py-{int(time.time() * 1000)}-{os.urandom(4).hex()}"
+    
+    logger.info("=" * 60)
+    logger.info(f"🚀 [PYTHON:ANALYZE:{request_id}] New analysis request received")
+    logger.info(f"   Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info(f"   Snapshot branch: {request.snapshot.get('branch', {}).get('head', 'unknown')}")
+    logger.info(f"   Has conflicts: {len(request.snapshot.get('unmergedFiles', [])) > 0}")
+    logger.info(f"   Detached HEAD: {request.snapshot.get('isDetachedHead', False)}")
+    logger.info(f"   Rebase in progress: {request.snapshot.get('rebaseState', {}).get('inProgress', False)}")
+    logger.info(f"   AI Model: {MODEL}")
+    logger.info(f"   LLM Provider: anthropic")
 
     try:
         # Initialize state
@@ -745,12 +105,13 @@ async def analyze_snapshot(request: AnalyzeRequest):
         }
 
         # Run the SpoonOS pipeline
-        logger.info("🔄 [PIPELINE] Starting SpoonOS pipeline execution...")
+        logger.info(f"🔄 [PYTHON:ANALYZE:{request_id}] Starting SpoonOS pipeline execution...")
+        logger.info(f"   Pipeline stages: detect_issue → build_graph → extract_conflicts → collect_signals → generate_analysis")
         result = await analysis_pipeline.invoke(initial_state)
-        logger.info("✅ [PIPELINE] SpoonOS pipeline completed successfully")
+        logger.info(f"✅ [PYTHON:ANALYZE:{request_id}] SpoonOS pipeline completed successfully")
 
         duration_ms = int((time.time() - start_time) * 1000)
-        logger.info(f"⏱️  [ANALYZE] Total analysis time: {duration_ms}ms")
+        logger.info(f"⏱️  [PYTHON:ANALYZE:{request_id}] Total analysis time: {duration_ms}ms")
 
         # Enhance conflicts with explanations
         conflicts_with_explanations = []
@@ -764,9 +125,21 @@ async def analyze_snapshot(request: AnalyzeRequest):
                 "priority": explanation.get("priority", "medium")
             })
 
-        logger.info(f"✅ [ANALYZE] Analysis complete - Issue: {result['issue_type']}, Risk: {result['risk_level']}")
+        logger.info(f"✅ [PYTHON:ANALYZE:{request_id}] Analysis complete")
+        logger.info(f"   Issue type: {result['issue_type']}")
+        logger.info(f"   Risk level: {result['risk_level']}")
         logger.info(f"   Plan steps: {len(result.get('plan_steps', []))}")
         logger.info(f"   Pipeline traces: {len(result.get('stage_traces', []))}")
+        logger.info(f"   Conflicts: {len(result.get('conflicts', []))}")
+        logger.info(f"   Summary length: {len(result.get('summary', ''))} chars")
+        
+        # Check if AI was used (has conflict_explanations or detailed summary)
+        has_ai_content = bool(result.get('conflict_explanations')) or len(result.get('summary', '')) > 100
+        if has_ai_content:
+            logger.info(f"🎯 [PYTHON:ANALYZE:{request_id}] USING REAL AI MODEL - Response contains AI-generated content")
+        else:
+            logger.warning(f"⚠️  [PYTHON:ANALYZE:{request_id}] FALLBACK MODE - Response appears to be rule-based")
+        
         logger.info("=" * 60)
 
         return AnalyzeResponse(
@@ -786,7 +159,11 @@ async def analyze_snapshot(request: AnalyzeRequest):
 
     except Exception as e:
         duration_ms = int((time.time() - start_time) * 1000)
-        logger.error(f"❌ [ANALYZE] Error during analysis: {str(e)}", exc_info=True)
+        logger.error(f"❌ [PYTHON:ANALYZE:{request_id}] Error during analysis: {str(e)}")
+        logger.error(f"   Error type: {type(e).__name__}")
+        logger.error(f"   Duration before error: {duration_ms}ms")
+        import traceback
+        logger.error(f"   Traceback: {traceback.format_exc()}")
         logger.info("=" * 60)
         return AnalyzeResponse(
             success=False,
