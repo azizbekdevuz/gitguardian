@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import Google from 'next-auth/providers/google';
+import Kakao from 'next-auth/providers/kakao';
 import type { Provider } from 'next-auth/providers';
 
 // Build providers array dynamically
@@ -27,6 +28,19 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   );
 }
 
+// Add Kakao provider if configured
+if (process.env.KAKAO_CLIENT_ID && process.env.KAKAO_CLIENT_SECRET) {
+  providers.push(
+    Kakao({
+      clientId: process.env.KAKAO_CLIENT_ID,
+      clientSecret: process.env.KAKAO_CLIENT_SECRET,
+    })
+  );
+}
+
+// Public routes that don't require authentication
+const publicRoutes = ['/', '/auth/signin', '/auth/signup', '/auth/error'];
+
 export const authConfig: NextAuthConfig = {
   providers,
   pages: {
@@ -36,12 +50,19 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const protectedRoutes = ['/history', '/session'];
-      const isProtected = protectedRoutes.some((route) =>
-        nextUrl.pathname.startsWith(route)
+      const pathname = nextUrl.pathname;
+
+      // Allow public routes
+      const isPublicRoute = publicRoutes.some(
+        (route) => pathname === route || pathname.startsWith('/api/auth')
       );
 
-      if (isProtected && !isLoggedIn) {
+      if (isPublicRoute) {
+        return true;
+      }
+
+      // All other routes require authentication
+      if (!isLoggedIn) {
         return false;
       }
 

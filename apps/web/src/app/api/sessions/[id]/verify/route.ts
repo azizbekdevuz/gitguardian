@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SnapshotV1Schema, type Signals, type PlanV1 } from '@gitguard/schema';
-import { getLatestPlan, getTraces, createSnapshot, saveTrace } from '@/lib/db';
-import { verifyProgress, collectSignals } from '@/lib/agent';
+import { SnapshotV1Schema } from '@gitguard/schema';
+import { createSnapshot, getLatestAnalysis, getTraces, saveTrace } from '@/lib/db';
 
+const AGENT_URL = process.env.AGENT_URL || 'http://localhost:8000';
+
+/**
+ * POST /api/sessions/[id]/verify
+ * Upload a new snapshot to verify progress.
+ */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -21,33 +26,53 @@ export async function POST(
       snapshotJson: newSnapshot,
     });
 
-    // Get original signals from collector trace
-    const traces = await getTraces(sessionId);
-    const collectorTrace = traces.find((t) => t.stage === 'collector');
-    if (!collectorTrace) {
-      return NextResponse.json({ error: 'No collector trace found' }, { status: 400 });
+    // Get original analysis
+    const originalAnalysis = await getLatestAnalysis(sessionId);
+    const originalIssueType = originalAnalysis?.issueType || 'unknown';
+
+    // Determine new issue type based on snapshot
+    let newIssueType = 'unknown';
+    if (newSnapshot.unmergedFiles.length > 0) {
+      newIssueType = 'merge_conflict';
+    } else if (newSnapshot.rebaseState.inProgress) {
+      newIssueType = 'rebase_in_progress';
+    } else if (newSnapshot.isDetachedHead) {
+      newIssueType = 'detached_head';
+    } else {
+      newIssueType = 'clean';
     }
 
-    const originalSignals = collectorTrace.outputJson as Signals;
+    const resolved = newIssueType === 'clean';
+    const remainingIssues: string[] = [];
 
-    // Get current plan
-    const planRecord = await getLatestPlan(sessionId);
-    if (!planRecord) {
-      return NextResponse.json({ error: 'No plan found' }, { status: 400 });
+    if (newSnapshot.unmergedFiles.length > 0) {
+      remainingIssues.push(...newSnapshot.unmergedFiles.map((f) => `Conflict: ${f.path}`));
+    }
+    if (newSnapshot.rebaseState.inProgress) {
+      remainingIssues.push('Rebase in progress');
+    }
+    if (newSnapshot.isDetachedHead) {
+      remainingIssues.push('Detached HEAD');
     }
 
-    const plan = planRecord.planJson as PlanV1;
+    const result = {
+      previousIssue: originalIssueType,
+      currentIssue: newIssueType,
+      resolved,
+      remainingIssues,
+      snapshotId: snapshotRecord.id,
+    };
 
-    // Run verifier
-    const verifierStart = Date.now();
-    const result = await verifyProgress(newSnapshot, originalSignals, plan);
-
-    // Save new collector trace for the new snapshot
-    const newSignals = collectSignals(newSnapshot);
-    await saveTrace(sessionId, 'collector', snapshotRecord.id, newSignals);
-
-    // Save verifier trace
-    await saveTrace(sessionId, 'verifier', snapshotRecord.id, result, verifierStart);
+    // Save verify trace
+    await saveTrace(
+      sessionId,
+      'verify',
+      snapshotRecord.id,
+      { previousSnapshot: 'omitted', newSnapshot: 'omitted' },
+      result,
+      Date.now(),
+      true
+    );
 
     return NextResponse.json(result);
   } catch (error) {

@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SnapshotV1Schema, type PlanV1, type Signals } from '@gitguard/schema';
+import { SnapshotV1Schema } from '@gitguard/schema';
 import { getSessionWithDetails } from '@/lib/db';
+import { collectSignals } from '@/lib/agent/collector';
 
+/**
+ * GET /api/sessions/[id]
+ * Get session data with snapshot, analysis, and traces.
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -20,35 +25,103 @@ export async function GET(
     }
 
     const snapshot = SnapshotV1Schema.parse(latestSnapshot.snapshotJson);
+    const latestAnalysis = sessionData.analyses[0];
 
-    const latestPlan = sessionData.plans[0];
-    const plan: PlanV1 | null = latestPlan
-      ? (latestPlan.planJson as PlanV1)
-      : null;
+    // Compute signals from snapshot
+    const signals = collectSignals(snapshot);
 
     const traces = sessionData.traces.map((t) => ({
       stage: t.stage,
+      input: t.inputJson,
       output: t.outputJson,
       createdAt: t.createdAt.toISOString(),
       durationMs: t.durationMs,
+      success: t.success,
     }));
 
-    // Get signals from collector trace
-    let signals: Signals | null = null;
-    const collectorTrace = sessionData.traces.find((t) => t.stage === 'collector');
-    if (collectorTrace) {
-      signals = collectorTrace.outputJson as Signals;
+    // Transform plan steps from database to PlanV1 format
+    let plan = null;
+    if (latestAnalysis && latestAnalysis.planSteps.length > 0) {
+      plan = {
+        version: 1,
+        timestamp: latestAnalysis.createdAt.toISOString(),
+        issueType: latestAnalysis.issueType,
+        issueSummary: latestAnalysis.summary || 'Recovery plan generated',
+        risk: signals.estimatedRisk || 'medium',
+        steps: latestAnalysis.planSteps.map((s) => {
+          // Parse undo from JSON
+          const undoData = s.undoJson as { commands?: string[]; description?: string; possible?: boolean } | string[] || {};
+          const undoCommands = Array.isArray(undoData) ? undoData : (undoData.commands || []);
+          const undoDescription = Array.isArray(undoData) ? 'Undo this step' : (undoData.description || 'Undo this step');
+
+          return {
+            id: s.id,
+            title: s.title,
+            description: s.rationale || s.title,
+            commands: Array.isArray(s.commandsJson) ? s.commandsJson : [],
+            expected: typeof s.verifyJson === 'object' && s.verifyJson !== null && 'expected' in s.verifyJson
+              ? String((s.verifyJson as { expected?: unknown }).expected)
+              : 'Command executed successfully',
+            undo: {
+              possible: true,
+              commands: undoCommands,
+              description: undoDescription,
+            },
+            dangerous: s.dangerLevel === 'dangerous',
+            requiresUserInput: false,
+          };
+        }),
+        reflogRecovery: {
+          description: 'If something goes wrong, use reflog to recover',
+          relevantEntries: ['HEAD@{1}'],
+          recoveryCommand: 'git reset --hard HEAD@{1}',
+        },
+      };
     }
 
     return NextResponse.json({
       session: {
         id: sessionData.id,
         title: sessionData.title,
+        status: sessionData.status,
         createdAt: sessionData.createdAt.toISOString(),
       },
       snapshot,
       signals,
       plan,
+      analysis: latestAnalysis
+        ? {
+            issueType: latestAnalysis.issueType,
+            summary: latestAnalysis.summary,
+            repoGraph: latestAnalysis.repoGraphJson,
+            conflictFiles: latestAnalysis.conflictFiles.map((f) => ({
+              id: f.id,
+              path: f.path,
+              summary: f.highLevelSummary,
+              hunks: f.hunks.map((h) => ({
+                id: h.id,
+                index: h.index,
+                baseText: h.baseText,
+                oursText: h.oursText,
+                theirsText: h.theirsText,
+                explanation: h.explanation,
+                suggestedChoice: h.suggestedChoice,
+                userChoice: h.userChoice,
+              })),
+            })),
+            planSteps: latestAnalysis.planSteps.map((s) => ({
+              id: s.id,
+              index: s.index,
+              title: s.title,
+              rationale: s.rationale,
+              commands: s.commandsJson,
+              verify: s.verifyJson,
+              undo: s.undoJson,
+              dangerLevel: s.dangerLevel,
+              status: s.status,
+            })),
+          }
+        : null,
       traces,
     });
   } catch (error) {

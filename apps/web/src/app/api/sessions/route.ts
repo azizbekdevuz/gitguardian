@@ -1,9 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SnapshotV1Schema } from '@gitguard/schema';
-import { createSession, createSnapshot, saveTrace } from '@/lib/db';
+import { createSession, createSnapshot, saveTrace, getUserSessions } from '@/lib/db';
 import { collectSignals } from '@/lib/agent';
 import { auth } from '@/lib/auth';
 import { createHash } from 'crypto';
+
+export async function GET() {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const sessions = await getUserSessions(session.user.id);
+
+    // Transform to match frontend interface
+    const formattedSessions = sessions.map(s => ({
+      id: s.id,
+      createdAt: s.createdAt.toISOString(),
+      title: s.title,
+      status: s.status,
+      analysis: s.analyses[0] ? {
+        issueType: s.analyses[0].issueType,
+        summary: s.analyses[0].summary,
+      } : null,
+      traces: s.traces.map(t => ({
+        stage: t.stage,
+        outputJson: t.outputJson,
+        createdAt: t.createdAt.toISOString(),
+        success: t.success,
+      })),
+    }));
+
+    return NextResponse.json({ sessions: formattedSessions });
+  } catch (error) {
+    console.error('Error fetching sessions:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {

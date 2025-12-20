@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { hashPassword } from '@/lib/auth';
+import { createAuthLog, extractClientIp } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
+  const ipAddress = extractClientIp(request.headers);
+  const userAgent = request.headers.get('user-agent');
+
   try {
     const { name, email, password } = await request.json();
 
@@ -26,6 +30,15 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingUser) {
+      await createAuthLog({
+        userId: null,
+        action: 'REGISTER_FAILED',
+        ipAddress,
+        userAgent,
+        success: false,
+        failureReason: 'Email already exists',
+      }).catch(console.error);
+
       return NextResponse.json(
         { error: 'An account with this email already exists' },
         { status: 409 }
@@ -47,6 +60,15 @@ export async function POST(request: NextRequest) {
         email: true,
       },
     });
+
+    // Log successful registration
+    await createAuthLog({
+      userId: user.id,
+      action: 'REGISTER',
+      ipAddress,
+      userAgent,
+      success: true,
+    }).catch(console.error);
 
     return NextResponse.json({ user }, { status: 201 });
   } catch (error) {

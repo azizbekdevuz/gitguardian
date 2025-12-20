@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import styles from './page.module.css';
+import { Header } from '@/components/Header';
 import type { SnapshotV1, PlanV1, Signals, UnmergedFile, ConflictBlock } from '@gitguard/schema';
 
 type Tab = 'explorer' | 'history' | 'plan' | 'trace';
@@ -43,6 +44,24 @@ interface StateExplanation {
   unsafeActions: string[];
 }
 
+// Visual Graph Node Types
+interface GraphNode {
+  id: string;
+  type: 'commit' | 'branch' | 'head' | 'conflict' | 'merge';
+  label: string;
+  x: number;
+  y: number;
+  color: string;
+  active?: boolean;
+}
+
+interface GraphEdge {
+  from: string;
+  to: string;
+  color: string;
+  dashed?: boolean;
+}
+
 export default function SessionPage() {
   const params = useParams();
   const sessionId = params.id as string;
@@ -57,7 +76,6 @@ export default function SessionPage() {
     loadSession();
   }, [sessionId]);
 
-  // Auto-switch to history tab if no conflicts but has state issues
   useEffect(() => {
     if (data?.snapshot) {
       const hasConflicts = data.snapshot.unmergedFiles.length > 0;
@@ -90,8 +108,14 @@ export default function SessionPage() {
         method: 'POST',
       });
       if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Failed to generate plan');
+        let errorMessage = 'Failed to generate plan';
+        try {
+          const result = await response.json();
+          errorMessage = result.error || errorMessage;
+        } catch {
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       await loadSession();
       setActiveTab('plan');
@@ -103,107 +127,166 @@ export default function SessionPage() {
   };
 
   if (loading) {
-    return <div className={styles.loading}>Loading session...</div>;
+    return (
+      <>
+        <Header />
+        <div className={styles.loadingContainer}>
+          <div className={styles.loadingSpinner}>
+            <div className={styles.spinnerRing}></div>
+            <div className={styles.spinnerRing}></div>
+            <div className={styles.spinnerRing}></div>
+          </div>
+          <p className={styles.loadingText}>Initializing Session...</p>
+        </div>
+      </>
+    );
   }
 
   if (error || !data) {
-    return <div className={styles.error}>{error || 'Session not found'}</div>;
+    return (
+      <>
+        <Header />
+        <div className={styles.errorContainer}>
+          <div className={styles.errorIcon}>⚠</div>
+          <h2>Session Error</h2>
+          <p>{error || 'Session not found'}</p>
+          <button className="btn btn-primary" onClick={() => window.location.href = '/dashboard'}>
+            Return to Dashboard
+          </button>
+        </div>
+      </>
+    );
   }
 
   const { snapshot, signals, plan, traces } = data;
   const hasConflicts = snapshot.unmergedFiles.length > 0;
-  const hasStateIssue = snapshot.isDetachedHead || snapshot.rebaseState.inProgress;
 
-  // Determine the current state badge
   const getStateBadge = () => {
     if (hasConflicts) {
-      if (snapshot.rebaseState.inProgress) return { text: 'Rebase Conflict', color: 'purple' };
-      return { text: 'Merge Conflict', color: 'yellow' };
+      if (snapshot.rebaseState.inProgress) return { text: 'Rebase Conflict', color: 'purple', icon: '⚡' };
+      return { text: 'Merge Conflict', color: 'yellow', icon: '⚠' };
     }
-    if (snapshot.rebaseState.inProgress) return { text: 'Rebase In Progress', color: 'purple' };
-    if (snapshot.isDetachedHead) return { text: 'Detached HEAD', color: 'blue' };
-    return { text: 'Clean', color: 'green' };
+    if (snapshot.rebaseState.inProgress) return { text: 'Rebase In Progress', color: 'purple', icon: '🔄' };
+    if (snapshot.isDetachedHead) return { text: 'Detached HEAD', color: 'blue', icon: '📍' };
+    return { text: 'Clean', color: 'green', icon: '✓' };
   };
 
   const stateBadge = getStateBadge();
 
   return (
-    <main className={styles.main}>
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <h1>GitGuard Agent</h1>
-          <span className={`${styles.stateBadge} ${styles[stateBadge.color]}`}>
-            {stateBadge.text}
-          </span>
+    <>
+      <Header />
+      <main className={styles.main}>
+        {/* Animated Background */}
+        <div className={styles.bgEffects}>
+          <div className={styles.bgOrb1}></div>
+          <div className={styles.bgOrb2}></div>
+          <div className={styles.gridOverlay}></div>
         </div>
-        <span className={styles.sessionId}>{sessionId.slice(0, 8)}</span>
-      </header>
 
-      <nav className={styles.tabs}>
-        <button
-          className={`${styles.tab} ${activeTab === 'explorer' ? styles.active : ''}`}
-          onClick={() => setActiveTab('explorer')}
-          disabled={!hasConflicts}
-        >
-          Conflict Explorer
-          {hasConflicts && <span className={styles.tabBadge}>{snapshot.unmergedFiles.length}</span>}
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'history' ? styles.active : ''}`}
-          onClick={() => setActiveTab('history')}
-        >
-          History / State
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'plan' ? styles.active : ''}`}
-          onClick={() => setActiveTab('plan')}
-        >
-          Recovery Plan
-          {plan && <span className={styles.tabCheck}>✓</span>}
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'trace' ? styles.active : ''}`}
-          onClick={() => setActiveTab('trace')}
-        >
-          SpoonOS Trace
-        </button>
-      </nav>
+        {/* Header with Glass Effect */}
+        <header className={styles.header}>
+          <div className={styles.headerContent}>
+            <div className={styles.headerLeft}>
+              <div className={styles.titleSection}>
+                <h1>{data.session.title || 'Recovery Session'}</h1>
+                <span className={styles.sessionMeta}>
+                  <span className={styles.sessionId}>#{sessionId.slice(0, 8)}</span>
+                  <span className={styles.sessionTime}>
+                    {new Date(data.session.createdAt).toLocaleString()}
+                  </span>
+                </span>
+              </div>
+            </div>
+            <div className={styles.headerRight}>
+              <div className={`${styles.statusIndicator} ${styles[stateBadge.color]}`}>
+                <span className={styles.statusIcon}>{stateBadge.icon}</span>
+                <span className={styles.statusText}>{stateBadge.text}</span>
+                <span className={styles.statusPulse}></span>
+              </div>
+            </div>
+          </div>
+        </header>
 
-      <div className={styles.content}>
-        {activeTab === 'explorer' && (
-          <ConflictExplorerTab
-            snapshot={snapshot}
-            sessionId={sessionId}
-            onGeneratePlan={generatePlan}
-            generating={generating}
-            hasPlan={!!plan}
-          />
-        )}
-        {activeTab === 'history' && (
-          <HistoryStateTab
-            snapshot={snapshot}
-            signals={signals}
-            sessionId={sessionId}
-            onGeneratePlan={generatePlan}
-            generating={generating}
-            hasPlan={!!plan}
-          />
-        )}
-        {activeTab === 'plan' && (
-          <RecoveryPlanTab
-            plan={plan}
-            sessionId={sessionId}
-            onReload={loadSession}
-          />
-        )}
-        {activeTab === 'trace' && <SpoonOSTraceTab traces={traces} signals={signals} />}
-      </div>
-    </main>
+        {/* Navigation Tabs */}
+        <nav className={styles.tabsContainer}>
+          <div className={styles.tabs}>
+            <button
+              className={`${styles.tab} ${activeTab === 'explorer' ? styles.active : ''}`}
+              onClick={() => setActiveTab('explorer')}
+              disabled={!hasConflicts}
+            >
+              <span className={styles.tabIcon}>🔍</span>
+              <span className={styles.tabLabel}>Conflict Explorer</span>
+              {hasConflicts && (
+                <span className={styles.tabCount}>{snapshot.unmergedFiles.length}</span>
+              )}
+            </button>
+            <button
+              className={`${styles.tab} ${activeTab === 'history' ? styles.active : ''}`}
+              onClick={() => setActiveTab('history')}
+            >
+              <span className={styles.tabIcon}>📊</span>
+              <span className={styles.tabLabel}>Repository Graph</span>
+            </button>
+            <button
+              className={`${styles.tab} ${activeTab === 'plan' ? styles.active : ''}`}
+              onClick={() => setActiveTab('plan')}
+            >
+              <span className={styles.tabIcon}>🗺</span>
+              <span className={styles.tabLabel}>Recovery Plan</span>
+              {plan && <span className={styles.tabCheck}>✓</span>}
+            </button>
+            <button
+              className={`${styles.tab} ${activeTab === 'trace' ? styles.active : ''}`}
+              onClick={() => setActiveTab('trace')}
+            >
+              <span className={styles.tabIcon}>⚙</span>
+              <span className={styles.tabLabel}>SpoonOS Pipeline</span>
+            </button>
+          </div>
+        </nav>
+
+        {/* Content Area */}
+        <div className={styles.content}>
+          {activeTab === 'explorer' && (
+            <ConflictExplorerTab
+              snapshot={snapshot}
+              sessionId={sessionId}
+              onGeneratePlan={generatePlan}
+              generating={generating}
+              hasPlan={!!plan}
+            />
+          )}
+          {activeTab === 'history' && (
+            <RepositoryGraphTab
+              snapshot={snapshot}
+              signals={signals}
+              sessionId={sessionId}
+              onGeneratePlan={generatePlan}
+              generating={generating}
+              hasPlan={!!plan}
+            />
+          )}
+          {activeTab === 'plan' && (
+            <RecoveryPlanTab
+              plan={plan}
+              snapshot={snapshot}
+              sessionId={sessionId}
+              onReload={loadSession}
+            />
+          )}
+          {activeTab === 'trace' && (
+            <SpoonOSPipelineTab traces={traces} signals={signals} />
+          )}
+        </div>
+      </main>
+    </>
   );
 }
 
 // ============================================
-// CONFLICT EXPLORER TAB
+// CONFLICT EXPLORER TAB - Visual Diff View
 // ============================================
 function ConflictExplorerTab({
   snapshot,
@@ -222,6 +305,8 @@ function ConflictExplorerTab({
   const [selectedBlockIndex, setSelectedBlockIndex] = useState(0);
   const [explanation, setExplanation] = useState<ConflictExplanation | null>(null);
   const [explaining, setExplaining] = useState(false);
+  const [viewMode, setViewMode] = useState<'split' | 'unified'>('split');
+  const [hoveredLine, setHoveredLine] = useState<number | null>(null);
 
   const selectedFile = snapshot.unmergedFiles[selectedFileIndex];
   const selectedBlock = selectedFile?.conflictBlocks[selectedBlockIndex];
@@ -238,6 +323,9 @@ function ConflictExplorerTab({
           blockIndex: selectedBlockIndex,
         }),
       });
+      if (!response.ok) {
+        throw new Error(response.statusText || 'Failed to explain conflict');
+      }
       const data = await response.json();
       setExplanation(data.explanation);
     } catch (err) {
@@ -247,179 +335,331 @@ function ConflictExplorerTab({
     }
   };
 
-  // Reset explanation when switching files/blocks
   useEffect(() => {
     setExplanation(null);
   }, [selectedFileIndex, selectedBlockIndex]);
 
   if (snapshot.unmergedFiles.length === 0) {
     return (
-      <div className={styles.emptyState}>
-        <p>No merge conflicts detected.</p>
-        <p className={styles.hint}>Check the History / State tab for other issues.</p>
+      <div className={styles.emptyStateCard}>
+        <div className={styles.emptyIcon}>✓</div>
+        <h3>No Merge Conflicts</h3>
+        <p>Your repository is conflict-free! Check the Repository Graph tab for other potential issues.</p>
       </div>
     );
   }
 
+  // Build conflict visualization graph
+  const conflictNodes: GraphNode[] = snapshot.unmergedFiles.map((file, idx) => ({
+    id: `file-${idx}`,
+    type: 'conflict' as const,
+    label: file.path.split('/').pop() || file.path,
+    x: 100 + (idx % 4) * 150,
+    y: 80 + Math.floor(idx / 4) * 100,
+    color: idx === selectedFileIndex ? '#58a6ff' : '#f85149',
+    active: idx === selectedFileIndex,
+  }));
+
   return (
-    <div className={styles.explorerLayout}>
-      {/* Left Sidebar - File List */}
-      <aside className={styles.sidebar}>
-        <div className={styles.sidebarHeader}>
-          <h3>Conflicting Files</h3>
-          <span className={styles.fileCount}>{snapshot.unmergedFiles.length}</span>
+    <div className={styles.explorerContainer}>
+      {/* Visual Conflict Map */}
+      <div className={styles.conflictMapSection}>
+        <div className={styles.sectionHeader}>
+          <h3>Conflict Map</h3>
+          <span className={styles.conflictCount}>
+            {snapshot.unmergedFiles.length} files with conflicts
+          </span>
         </div>
-        <ul className={styles.fileList}>
-          {snapshot.unmergedFiles.map((file, idx) => (
-            <li
-              key={file.path}
-              className={`${styles.fileItem} ${idx === selectedFileIndex ? styles.selected : ''}`}
-              onClick={() => {
-                setSelectedFileIndex(idx);
-                setSelectedBlockIndex(0);
-              }}
-            >
-              <span className={styles.fileName}>{getFileName(file.path)}</span>
-              <span className={styles.filePath}>{getFilePath(file.path)}</span>
-              <span className={styles.blockBadge}>{file.conflictBlocks.length}</span>
-            </li>
-          ))}
-        </ul>
+        <div className={styles.conflictMap}>
+          <svg className={styles.conflictSvg} viewBox="0 0 650 200">
+            {/* Central node */}
+            <circle cx="325" cy="100" r="30" fill="#161b22" stroke="#30363d" strokeWidth="2" />
+            <text x="325" y="105" textAnchor="middle" fill="#c9d1d9" fontSize="12">MERGE</text>
 
-        {/* Action buttons */}
-        <div className={styles.sidebarActions}>
-          <button
-            className="btn btn-primary"
-            onClick={onGeneratePlan}
-            disabled={generating}
-          >
-            {generating ? 'Generating...' : hasPlan ? 'Regenerate Plan' : 'Generate Recovery Plan'}
-          </button>
+            {/* Conflict file nodes */}
+            {conflictNodes.map((node, idx) => {
+              const angle = (idx / conflictNodes.length) * Math.PI * 2 - Math.PI / 2;
+              const radius = 100;
+              const cx = 325 + Math.cos(angle) * radius;
+              const cy = 100 + Math.sin(angle) * radius;
+
+              return (
+                <g key={node.id} onClick={() => setSelectedFileIndex(idx)} style={{ cursor: 'pointer' }}>
+                  {/* Connection line */}
+                  <line
+                    x1="325"
+                    y1="100"
+                    x2={cx}
+                    y2={cy}
+                    stroke={node.active ? '#58a6ff' : '#f85149'}
+                    strokeWidth={node.active ? 3 : 2}
+                    strokeDasharray={node.active ? '0' : '5,5'}
+                    className={styles.conflictLine}
+                  />
+                  {/* Node circle */}
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={node.active ? 25 : 20}
+                    fill={node.active ? 'rgba(88, 166, 255, 0.2)' : 'rgba(248, 81, 73, 0.2)'}
+                    stroke={node.color}
+                    strokeWidth={2}
+                    className={styles.conflictNode}
+                  />
+                  {/* Block count */}
+                  <text x={cx} y={cy + 4} textAnchor="middle" fill="#c9d1d9" fontSize="10">
+                    {snapshot.unmergedFiles[idx]?.conflictBlocks.length || 0}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+
+          {/* File list below */}
+          <div className={styles.fileListCompact}>
+            {snapshot.unmergedFiles.map((file, idx) => (
+              <button
+                key={file.path}
+                className={`${styles.fileChip} ${idx === selectedFileIndex ? styles.activeChip : ''}`}
+                onClick={() => { setSelectedFileIndex(idx); setSelectedBlockIndex(0); }}
+              >
+                <span className={styles.chipIcon}>📄</span>
+                <span className={styles.chipName}>{file.path.split('/').pop()}</span>
+                <span className={styles.chipBadge}>{file.conflictBlocks.length}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </aside>
+      </div>
 
-      {/* Main Panel - Diff View */}
-      <div className={styles.mainPanel}>
-        {selectedFile && selectedBlock ? (
-          <>
-            {/* Block navigator */}
-            {selectedFile.conflictBlocks.length > 1 && (
-              <div className={styles.blockNav}>
-                <span>Conflict {selectedBlockIndex + 1} of {selectedFile.conflictBlocks.length}</span>
-                <div className={styles.blockNavButtons}>
+      {/* Diff Viewer */}
+      {selectedFile && selectedBlock && (
+        <div className={styles.diffSection}>
+          <div className={styles.diffHeader}>
+            <div className={styles.diffInfo}>
+              <span className={styles.filePath}>{selectedFile.path}</span>
+              <span className={styles.lineRange}>
+                Lines {selectedBlock.startLine} - {selectedBlock.endLine}
+              </span>
+            </div>
+            <div className={styles.diffControls}>
+              {/* Block navigator */}
+              {selectedFile.conflictBlocks.length > 1 && (
+                <div className={styles.blockNavigator}>
                   <button
                     onClick={() => setSelectedBlockIndex(Math.max(0, selectedBlockIndex - 1))}
                     disabled={selectedBlockIndex === 0}
+                    className={styles.navBtn}
                   >
-                    ← Prev
+                    ◀
                   </button>
+                  <span className={styles.blockCounter}>
+                    {selectedBlockIndex + 1} / {selectedFile.conflictBlocks.length}
+                  </span>
                   <button
                     onClick={() => setSelectedBlockIndex(Math.min(selectedFile.conflictBlocks.length - 1, selectedBlockIndex + 1))}
                     disabled={selectedBlockIndex === selectedFile.conflictBlocks.length - 1}
+                    className={styles.navBtn}
                   >
-                    Next →
+                    ▶
                   </button>
                 </div>
-              </div>
-            )}
-
-            {/* Location info */}
-            <div className={styles.locationInfo}>
-              <span className={styles.filePath}>{selectedFile.path}</span>
-              <span className={styles.lineInfo}>Lines {selectedBlock.startLine}-{selectedBlock.endLine}</span>
-            </div>
-
-            {/* Side-by-side diff */}
-            <div className={styles.diffContainer}>
-              <div className={styles.diffPane}>
-                <div className={styles.diffHeader}>
-                  <span className={styles.oursLabel}>OURS</span>
-                  <span className={styles.branchName}>{snapshot.branch.head}</span>
-                </div>
-                <pre className={styles.diffContent}>{selectedBlock.oursContent || '(empty)'}</pre>
-              </div>
-              <div className={styles.diffDivider}>
-                <span>⟷</span>
-              </div>
-              <div className={styles.diffPane}>
-                <div className={styles.diffHeader}>
-                  <span className={styles.theirsLabel}>THEIRS</span>
-                  <span className={styles.branchName}>
-                    {snapshot.mergeHead ? snapshot.mergeHead.slice(0, 8) : 'incoming'}
-                  </span>
-                </div>
-                <pre className={styles.diffContent}>{selectedBlock.theirsContent || '(empty)'}</pre>
+              )}
+              {/* View mode toggle */}
+              <div className={styles.viewToggle}>
+                <button
+                  className={`${styles.toggleBtn} ${viewMode === 'split' ? styles.activeToggle : ''}`}
+                  onClick={() => setViewMode('split')}
+                >
+                  Split
+                </button>
+                <button
+                  className={`${styles.toggleBtn} ${viewMode === 'unified' ? styles.activeToggle : ''}`}
+                  onClick={() => setViewMode('unified')}
+                >
+                  Unified
+                </button>
               </div>
             </div>
-
-            {/* Context preview */}
-            {selectedBlock.context && (
-              <details className={styles.contextSection}>
-                <summary>View surrounding context</summary>
-                <pre className={styles.contextCode}>{selectedBlock.context}</pre>
-              </details>
-            )}
-
-            {/* Explain button */}
-            <div className={styles.explainSection}>
-              <button
-                className={`btn ${explanation ? '' : 'btn-primary'}`}
-                onClick={explainConflict}
-                disabled={explaining}
-              >
-                {explaining ? 'Analyzing...' : explanation ? 'Re-analyze Conflict' : 'Explain This Conflict'}
-              </button>
-            </div>
-
-            {/* AI Explanation */}
-            {explanation && (
-              <div className={styles.explanationCard}>
-                <h4>Conflict Analysis</h4>
-                <div className={styles.explanationMeta}>
-                  <span className={`${styles.conflictType} ${styles[explanation.conflictType]}`}>
-                    {explanation.conflictType}
-                  </span>
-                  <span className={`${styles.complexity} ${styles[explanation.complexity]}`}>
-                    {explanation.complexity} complexity
-                  </span>
-                </div>
-
-                <div className={styles.explanationSection}>
-                  <h5>What OURS changed:</h5>
-                  <p>{explanation.whatOursChanged}</p>
-                </div>
-
-                <div className={styles.explanationSection}>
-                  <h5>What THEIRS changed:</h5>
-                  <p>{explanation.whatTheirsChanged}</p>
-                </div>
-
-                <div className={styles.explanationSection}>
-                  <h5>Why this conflict occurred:</h5>
-                  <p>{explanation.whyConflict}</p>
-                </div>
-
-                <div className={styles.explanationSection}>
-                  <h5>Suggested resolution strategy:</h5>
-                  <p className={styles.strategy}>{explanation.suggestedStrategy}</p>
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className={styles.emptyState}>
-            <p>Select a file to view conflicts</p>
           </div>
-        )}
+
+          {/* Split View */}
+          {viewMode === 'split' ? (
+            <div className={styles.splitDiff}>
+              <div className={styles.diffPane}>
+                <div className={styles.paneHeader}>
+                  <div className={styles.branchIndicator}>
+                    <span className={styles.branchDot} style={{ background: '#3fb950' }}></span>
+                    <span className={styles.branchLabel}>OURS</span>
+                    <span className={styles.branchName}>{snapshot.branch.head}</span>
+                  </div>
+                </div>
+                <div className={styles.codeBlock}>
+                  {renderCodeWithLineNumbers(selectedBlock.oursContent || '(empty)', 'ours', selectedBlock.startLine)}
+                </div>
+              </div>
+
+              <div className={styles.diffDivider}>
+                <div className={styles.dividerLine}></div>
+                <span className={styles.dividerIcon}>⚔</span>
+                <div className={styles.dividerLine}></div>
+              </div>
+
+              <div className={styles.diffPane}>
+                <div className={styles.paneHeader}>
+                  <div className={styles.branchIndicator}>
+                    <span className={styles.branchDot} style={{ background: '#58a6ff' }}></span>
+                    <span className={styles.branchLabel}>THEIRS</span>
+                    <span className={styles.branchName}>
+                      {snapshot.mergeHead ? snapshot.mergeHead.slice(0, 8) : 'incoming'}
+                    </span>
+                  </div>
+                </div>
+                <div className={styles.codeBlock}>
+                  {renderCodeWithLineNumbers(selectedBlock.theirsContent || '(empty)', 'theirs', selectedBlock.startLine)}
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Unified View */
+            <div className={styles.unifiedDiff}>
+              <div className={styles.unifiedCode}>
+                <div className={styles.diffMarker} style={{ borderColor: '#f85149' }}>
+                  <span className={styles.markerLabel}>- OURS</span>
+                  <pre className={styles.markerCode}>{selectedBlock.oursContent || '(empty)'}</pre>
+                </div>
+                <div className={styles.conflictSeparator}>
+                  <span>═══════════════════════════════</span>
+                </div>
+                <div className={styles.diffMarker} style={{ borderColor: '#3fb950' }}>
+                  <span className={styles.markerLabel}>+ THEIRS</span>
+                  <pre className={styles.markerCode}>{selectedBlock.theirsContent || '(empty)'}</pre>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* AI Analysis Section */}
+          <div className={styles.analysisSection}>
+            <button
+              className={`${styles.analyzeBtn} ${explaining ? styles.analyzing : ''}`}
+              onClick={explainConflict}
+              disabled={explaining}
+            >
+              {explaining ? (
+                <>
+                  <span className={styles.spinnerSmall}></span>
+                  Analyzing with AI...
+                </>
+              ) : (
+                <>
+                  <span className={styles.aiIcon}>🧠</span>
+                  {explanation ? 'Re-analyze Conflict' : 'Explain This Conflict'}
+                </>
+              )}
+            </button>
+
+            {explanation && (
+              <div className={styles.explanationPanel}>
+                <div className={styles.explanationHeader}>
+                  <h4>AI Conflict Analysis</h4>
+                  <div className={styles.explanationBadges}>
+                    <span className={`${styles.typeBadge} ${styles[explanation.conflictType]}`}>
+                      {explanation.conflictType}
+                    </span>
+                    <span className={`${styles.complexityBadge} ${styles[explanation.complexity]}`}>
+                      {explanation.complexity} complexity
+                    </span>
+                  </div>
+                </div>
+
+                <div className={styles.explanationGrid}>
+                  <div className={styles.explanationCard}>
+                    <div className={styles.cardHeader}>
+                      <span className={styles.cardIcon} style={{ color: '#3fb950' }}>◉</span>
+                      <h5>What OURS Changed</h5>
+                    </div>
+                    <p>{explanation.whatOursChanged}</p>
+                  </div>
+
+                  <div className={styles.explanationCard}>
+                    <div className={styles.cardHeader}>
+                      <span className={styles.cardIcon} style={{ color: '#58a6ff' }}>◉</span>
+                      <h5>What THEIRS Changed</h5>
+                    </div>
+                    <p>{explanation.whatTheirsChanged}</p>
+                  </div>
+
+                  <div className={styles.explanationCard}>
+                    <div className={styles.cardHeader}>
+                      <span className={styles.cardIcon} style={{ color: '#f85149' }}>⚡</span>
+                      <h5>Why This Conflict Occurred</h5>
+                    </div>
+                    <p>{explanation.whyConflict}</p>
+                  </div>
+
+                  <div className={`${styles.explanationCard} ${styles.strategyCard}`}>
+                    <div className={styles.cardHeader}>
+                      <span className={styles.cardIcon} style={{ color: '#a371f7' }}>✨</span>
+                      <h5>Suggested Resolution Strategy</h5>
+                    </div>
+                    <p>{explanation.suggestedStrategy}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Action Footer */}
+      <div className={styles.actionFooter}>
+        <div className={styles.footerInfo}>
+          <span className={styles.progressText}>
+            {snapshot.unmergedFiles.length} conflicts to resolve
+          </span>
+        </div>
+        <button
+          className={`${styles.generateBtn} ${generating ? styles.generating : ''}`}
+          onClick={onGeneratePlan}
+          disabled={generating}
+        >
+          {generating ? (
+            <>
+              <span className={styles.btnSpinner}></span>
+              Generating Plan...
+            </>
+          ) : (
+            <>
+              <span className={styles.btnIcon}>🚀</span>
+              {hasPlan ? 'Regenerate Recovery Plan' : 'Generate Recovery Plan'}
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
 }
 
+// Helper function to render code with line numbers
+function renderCodeWithLineNumbers(code: string, side: 'ours' | 'theirs', startLine: number) {
+  const lines = code.split('\n');
+  return (
+    <div className={styles.codeLines}>
+      {lines.map((line, idx) => (
+        <div key={idx} className={`${styles.codeLine} ${styles[side]}`}>
+          <span className={styles.lineNumber}>{startLine + idx}</span>
+          <span className={styles.lineContent}>{line || ' '}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ============================================
-// HISTORY / STATE TAB
+// REPOSITORY GRAPH TAB - Visual Git History
 // ============================================
-function HistoryStateTab({
+function RepositoryGraphTab({
   snapshot,
   signals,
   sessionId,
@@ -436,6 +676,7 @@ function HistoryStateTab({
 }) {
   const [stateExplanation, setStateExplanation] = useState<StateExplanation | null>(null);
   const [explaining, setExplaining] = useState(false);
+  const [expandedReflog, setExpandedReflog] = useState(false);
 
   const explainState = async () => {
     setExplaining(true);
@@ -445,6 +686,9 @@ function HistoryStateTab({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'state' }),
       });
+      if (!response.ok) {
+        throw new Error(response.statusText || 'Failed to explain state');
+      }
       const data = await response.json();
       setStateExplanation(data.explanation);
     } catch (err) {
@@ -454,160 +698,320 @@ function HistoryStateTab({
     }
   };
 
+  // Build visual graph from reflog
+  const graphData = useMemo(() => {
+    const nodes: GraphNode[] = [];
+    const edges: GraphEdge[] = [];
+
+    // Current HEAD
+    nodes.push({
+      id: 'head',
+      type: 'head',
+      label: snapshot.isDetachedHead ? 'DETACHED' : snapshot.branch.head,
+      x: 300,
+      y: 50,
+      color: snapshot.isDetachedHead ? '#f85149' : '#3fb950',
+      active: true,
+    });
+
+    // Add recent reflog entries as nodes
+    snapshot.recentReflog.slice(0, 6).forEach((entry, idx) => {
+      const nodeId = `reflog-${idx}`;
+      nodes.push({
+        id: nodeId,
+        type: 'commit',
+        label: entry.message.slice(0, 20) + (entry.message.length > 20 ? '...' : ''),
+        x: 100 + (idx % 3) * 200,
+        y: 120 + Math.floor(idx / 3) * 80,
+        color: '#8b949e',
+      });
+
+      if (idx === 0) {
+        edges.push({ from: 'head', to: nodeId, color: '#58a6ff' });
+      } else {
+        edges.push({ from: `reflog-${idx - 1}`, to: nodeId, color: '#30363d' });
+      }
+    });
+
+    // Add merge head if present
+    if (snapshot.mergeHead) {
+      nodes.push({
+        id: 'merge',
+        type: 'merge',
+        label: 'MERGE_HEAD',
+        x: 500,
+        y: 50,
+        color: '#d29922',
+      });
+      edges.push({ from: 'merge', to: 'head', color: '#d29922', dashed: true });
+    }
+
+    // Add rebase info if in progress
+    if (snapshot.rebaseState.inProgress) {
+      nodes.push({
+        id: 'rebase',
+        type: 'branch',
+        label: `Rebasing onto ${snapshot.rebaseState.onto?.slice(0, 8) || 'unknown'}`,
+        x: 500,
+        y: 50,
+        color: '#a371f7',
+      });
+    }
+
+    return { nodes, edges };
+  }, [snapshot]);
+
   return (
-    <div className={styles.historyLayout}>
-      {/* State Overview */}
-      <section className={styles.stateOverview}>
-        <h3>Repository State</h3>
-        <div className={styles.stateCards}>
-          <div className={styles.stateCard}>
-            <span className={styles.stateLabel}>Current Position</span>
-            <span className={styles.stateValue}>
-              {snapshot.isDetachedHead ? (
-                <span className={styles.detached}>DETACHED @ {snapshot.branch.oid.slice(0, 8)}</span>
-              ) : (
-                <span>{snapshot.branch.head}</span>
-              )}
+    <div className={styles.graphTabContainer}>
+      {/* Status Overview Cards */}
+      <div className={styles.statusGrid}>
+        <div className={`${styles.statusCard} ${snapshot.isDetachedHead ? styles.warning : styles.success}`}>
+          <div className={styles.cardIcon}>
+            {snapshot.isDetachedHead ? '⚠' : '✓'}
+          </div>
+          <div className={styles.cardContent}>
+            <span className={styles.cardLabel}>HEAD Position</span>
+            <span className={styles.cardValue}>
+              {snapshot.isDetachedHead
+                ? `Detached @ ${snapshot.branch.oid.slice(0, 8)}`
+                : snapshot.branch.head}
             </span>
           </div>
+        </div>
 
-          {snapshot.rebaseState.inProgress && (
-            <div className={`${styles.stateCard} ${styles.rebaseCard}`}>
-              <span className={styles.stateLabel}>Rebase Progress</span>
-              <span className={styles.stateValue}>
-                Step {snapshot.rebaseState.currentStep || '?'} of {snapshot.rebaseState.totalSteps || '?'}
-              </span>
-              <div className={styles.rebaseInfo}>
-                <span>From: {snapshot.rebaseState.headName || 'unknown'}</span>
-                <span>Onto: {snapshot.rebaseState.onto?.slice(0, 8) || 'unknown'}</span>
-              </div>
+        <div className={`${styles.statusCard} ${snapshot.rebaseState.inProgress ? styles.warning : styles.neutral}`}>
+          <div className={styles.cardIcon}>
+            {snapshot.rebaseState.inProgress ? '🔄' : '○'}
+          </div>
+          <div className={styles.cardContent}>
+            <span className={styles.cardLabel}>Rebase Status</span>
+            <span className={styles.cardValue}>
+              {snapshot.rebaseState.inProgress
+                ? `Step ${snapshot.rebaseState.currentStep || '?'} of ${snapshot.rebaseState.totalSteps || '?'}`
+                : 'Not in rebase'}
+            </span>
+          </div>
+        </div>
+
+        {signals && (
+          <div className={`${styles.statusCard} ${styles[signals.estimatedRisk]}`}>
+            <div className={styles.cardIcon}>
+              {signals.estimatedRisk === 'high' ? '🔴' : signals.estimatedRisk === 'medium' ? '🟡' : '🟢'}
             </div>
-          )}
-
-          {signals && (
-            <div className={`${styles.stateCard} ${styles[signals.estimatedRisk]}`}>
-              <span className={styles.stateLabel}>Risk Level</span>
-              <span className={styles.stateValue}>{signals.estimatedRisk.toUpperCase()}</span>
+            <div className={styles.cardContent}>
+              <span className={styles.cardLabel}>Risk Level</span>
+              <span className={styles.cardValue}>{signals.estimatedRisk.toUpperCase()}</span>
             </div>
-          )}
+          </div>
+        )}
 
-          <div className={styles.stateCard}>
-            <span className={styles.stateLabel}>Uncommitted Work</span>
-            <span className={styles.stateValue}>
+        <div className={styles.statusCard}>
+          <div className={styles.cardIcon}>📝</div>
+          <div className={styles.cardContent}>
+            <span className={styles.cardLabel}>Uncommitted Changes</span>
+            <span className={styles.cardValue}>
               {snapshot.stagedFiles.length} staged, {snapshot.modifiedFiles.length} modified
             </span>
           </div>
         </div>
+      </div>
 
-        <button
-          className={`btn ${stateExplanation ? '' : 'btn-primary'}`}
-          onClick={explainState}
-          disabled={explaining}
-        >
-          {explaining ? 'Analyzing...' : stateExplanation ? 'Re-analyze State' : 'Explain This State'}
-        </button>
-      </section>
+      {/* Visual Git Graph */}
+      <div className={styles.graphSection}>
+        <div className={styles.sectionHeader}>
+          <h3>Repository Graph</h3>
+          <button
+            className={`${styles.explainBtn} ${explaining ? styles.loading : ''}`}
+            onClick={explainState}
+            disabled={explaining}
+          >
+            {explaining ? 'Analyzing...' : '🧠 Explain State'}
+          </button>
+        </div>
+
+        <div className={styles.graphVisualization}>
+          <svg className={styles.graphSvg} viewBox="0 0 600 280">
+            <defs>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+
+            {/* Render edges */}
+            {graphData.edges.map((edge, idx) => {
+              const fromNode = graphData.nodes.find(n => n.id === edge.from);
+              const toNode = graphData.nodes.find(n => n.id === edge.to);
+              if (!fromNode || !toNode) return null;
+
+              return (
+                <line
+                  key={idx}
+                  x1={fromNode.x}
+                  y1={fromNode.y}
+                  x2={toNode.x}
+                  y2={toNode.y}
+                  stroke={edge.color}
+                  strokeWidth="2"
+                  strokeDasharray={edge.dashed ? '5,5' : '0'}
+                  className={styles.graphEdge}
+                />
+              );
+            })}
+
+            {/* Render nodes */}
+            {graphData.nodes.map((node) => (
+              <g key={node.id} className={styles.graphNode}>
+                <circle
+                  cx={node.x}
+                  cy={node.y}
+                  r={node.active ? 20 : 15}
+                  fill={`${node.color}33`}
+                  stroke={node.color}
+                  strokeWidth="2"
+                  filter={node.active ? 'url(#glow)' : undefined}
+                />
+                {node.type === 'head' && (
+                  <text x={node.x} y={node.y - 28} textAnchor="middle" fill="#3fb950" fontSize="10" fontWeight="bold">
+                    HEAD
+                  </text>
+                )}
+                <text x={node.x} y={node.y + 35} textAnchor="middle" fill="#c9d1d9" fontSize="10">
+                  {node.label}
+                </text>
+              </g>
+            ))}
+          </svg>
+        </div>
+
+        {/* Commit Graph Text */}
+        {snapshot.commitGraph && (
+          <div className={styles.commitGraphText}>
+            <pre>{snapshot.commitGraph}</pre>
+          </div>
+        )}
+      </div>
 
       {/* State Explanation */}
       {stateExplanation && (
-        <section className={styles.stateExplanation}>
+        <div className={styles.stateExplanationPanel}>
           <h4>{stateExplanation.currentState}</h4>
 
           <div className={styles.explanationSection}>
-            <h5>Why Git stopped here:</h5>
-            <p>{stateExplanation.whyStopped}</p>
+            <span className={styles.sectionIcon}>❓</span>
+            <div>
+              <h5>Why Git stopped here</h5>
+              <p>{stateExplanation.whyStopped}</p>
+            </div>
           </div>
 
-          <div className={styles.implicationsGrid}>
-            <div className={styles.implicationCard}>
-              <h5>If you continue:</h5>
+          <div className={styles.implicationsRow}>
+            <div className={styles.implicationBox}>
+              <h5>▶ If you continue</h5>
               <p>{stateExplanation.continueImplications}</p>
             </div>
-            <div className={styles.implicationCard}>
-              <h5>If you abort:</h5>
+            <div className={styles.implicationBox}>
+              <h5>◀ If you abort</h5>
               <p>{stateExplanation.abortImplications}</p>
             </div>
           </div>
 
-          {stateExplanation.safeActions.length > 0 && (
-            <div className={styles.actionsList}>
-              <h5>Safe actions now:</h5>
-              <ul className={styles.safeActions}>
-                {stateExplanation.safeActions.map((action, i) => (
-                  <li key={i}>{action}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {stateExplanation.unsafeActions.length > 0 && (
-            <div className={styles.actionsList}>
-              <h5>Actions to avoid:</h5>
-              <ul className={styles.unsafeActions}>
-                {stateExplanation.unsafeActions.map((action, i) => (
-                  <li key={i}>{action}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* Commit Graph */}
-      <section className={styles.graphSection}>
-        <h3>Commit Graph</h3>
-        <div className={styles.graphContainer}>
-          <pre className={styles.commitGraph}>
-            {snapshot.commitGraph || 'Commit graph not available'}
-          </pre>
-          <div className={styles.youAreHere}>
-            <span className={styles.indicator}>●</span>
-            <span>You are at: {snapshot.branch.oid.slice(0, 8)}</span>
+          <div className={styles.actionsRow}>
+            {stateExplanation.safeActions.length > 0 && (
+              <div className={styles.safeActionsBox}>
+                <h5>✓ Safe Actions</h5>
+                <ul>
+                  {stateExplanation.safeActions.map((action, i) => (
+                    <li key={i}>{action}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {stateExplanation.unsafeActions.length > 0 && (
+              <div className={styles.unsafeActionsBox}>
+                <h5>✗ Actions to Avoid</h5>
+                <ul>
+                  {stateExplanation.unsafeActions.map((action, i) => (
+                    <li key={i}>{action}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
-      </section>
+      )}
 
-      {/* Recent Activity */}
-      <section className={styles.activitySection}>
-        <h3>Recent Activity (Reflog)</h3>
-        <div className={styles.reflogList}>
-          {snapshot.recentReflog.slice(0, 10).map((entry, i) => (
-            <div key={i} className={styles.reflogEntry}>
-              <span className={styles.reflogSelector}>{entry.selector}</span>
-              <span className={styles.reflogAction}>{entry.action}</span>
-              <span className={styles.reflogMessage}>{entry.message}</span>
+      {/* Reflog Timeline */}
+      <div className={styles.reflogSection}>
+        <div className={styles.sectionHeader}>
+          <h3>Recent Activity Timeline</h3>
+          <button
+            className={styles.expandBtn}
+            onClick={() => setExpandedReflog(!expandedReflog)}
+          >
+            {expandedReflog ? 'Show Less' : 'Show More'}
+          </button>
+        </div>
+
+        <div className={styles.timeline}>
+          {snapshot.recentReflog.slice(0, expandedReflog ? 15 : 5).map((entry, idx) => (
+            <div key={idx} className={styles.timelineEntry}>
+              <div className={styles.timelineDot}></div>
+              <div className={styles.timelineContent}>
+                <div className={styles.timelineHeader}>
+                  <span className={styles.refSelector}>{entry.selector}</span>
+                  <span className={styles.refAction}>{entry.action}</span>
+                </div>
+                <p className={styles.refMessage}>{entry.message}</p>
+              </div>
             </div>
           ))}
         </div>
-      </section>
+      </div>
 
       {/* Generate Plan Button */}
-      <section className={styles.planAction}>
+      <div className={styles.actionFooter}>
         <button
-          className="btn btn-primary"
+          className={`${styles.generateBtn} ${generating ? styles.generating : ''}`}
           onClick={onGeneratePlan}
           disabled={generating}
         >
-          {generating ? 'Generating...' : hasPlan ? 'Regenerate Recovery Plan' : 'Generate Recovery Plan'}
+          {generating ? (
+            <>
+              <span className={styles.btnSpinner}></span>
+              Generating Plan...
+            </>
+          ) : (
+            <>
+              <span className={styles.btnIcon}>🚀</span>
+              {hasPlan ? 'Regenerate Recovery Plan' : 'Generate Recovery Plan'}
+            </>
+          )}
         </button>
-      </section>
+      </div>
     </div>
   );
 }
 
 // ============================================
-// RECOVERY PLAN TAB
+// RECOVERY PLAN TAB - Interactive Steps
 // ============================================
 function RecoveryPlanTab({
   plan,
+  snapshot,
   sessionId,
   onReload,
 }: {
   plan: PlanV1 | null;
+  snapshot: SnapshotV1;
   sessionId: string;
   onReload: () => void;
 }) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
   const [verifyFile, setVerifyFile] = useState<File | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verifyResult, setVerifyResult] = useState<{
@@ -624,19 +1028,33 @@ function RecoveryPlanTab({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const toggleStep = (stepId: string) => {
+    const newExpanded = new Set(expandedSteps);
+    if (newExpanded.has(stepId)) {
+      newExpanded.delete(stepId);
+    } else {
+      newExpanded.add(stepId);
+    }
+    setExpandedSteps(newExpanded);
+  };
+
   const handleVerify = async () => {
     if (!verifyFile) return;
     setVerifying(true);
 
     try {
       const content = await verifyFile.text();
-      const snapshot = JSON.parse(content);
+      const snapshotData = JSON.parse(content);
 
       const response = await fetch(`/api/sessions/${sessionId}/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ snapshot }),
+        body: JSON.stringify({ snapshot: snapshotData }),
       });
+
+      if (!response.ok) {
+        throw new Error(response.statusText || 'Verification failed');
+      }
 
       const data = await response.json();
       setVerifyResult(data);
@@ -657,135 +1075,207 @@ function RecoveryPlanTab({
 
   if (!plan) {
     return (
-      <div className={styles.emptyState}>
-        <p>No recovery plan generated yet.</p>
-        <p className={styles.hint}>Go to the Conflict Explorer or History tab to generate one.</p>
+      <div className={styles.emptyStateCard}>
+        <div className={styles.emptyIcon}>📋</div>
+        <h3>No Recovery Plan Yet</h3>
+        <p>Generate a recovery plan from the Conflict Explorer or Repository Graph tab to see step-by-step instructions.</p>
       </div>
     );
   }
 
-  return (
-    <div className={styles.planLayout}>
-      {/* Plan Summary */}
-      <section className={styles.planSummary}>
-        <h3>Issue Summary</h3>
-        <p className={styles.summary}>{plan.issueSummary}</p>
-        <div className={styles.badges}>
-          <span className={`badge badge-${getIssueColor(plan.issueType)}`}>
-            {plan.issueType.replace('_', ' ')}
-          </span>
-          <span className={`badge badge-${getRiskColor(plan.risk)}`}>
-            Risk: {plan.risk}
-          </span>
-        </div>
-      </section>
+  const completedCount = verifyResult?.stepsCompleted.length || 0;
+  const progressPercent = (completedCount / plan.steps.length) * 100;
 
-      {/* Recovery Steps */}
-      <section className={styles.stepsSection}>
-        <h3>Recovery Steps</h3>
-        <div className={styles.steps}>
-          {plan.steps.map((step, index) => (
+  return (
+    <div className={styles.planContainer}>
+      {/* Plan Header with Progress */}
+      <div className={styles.planHeader}>
+        <div className={styles.planSummary}>
+          <h3>{plan.issueSummary}</h3>
+          <div className={styles.planBadges}>
+            <span className={`${styles.issueBadge} ${styles[plan.issueType]}`}>
+              {plan.issueType.replace('_', ' ')}
+            </span>
+            <span className={`${styles.riskBadge} ${styles[plan.risk]}`}>
+              Risk: {plan.risk}
+            </span>
+          </div>
+        </div>
+
+        <div className={styles.progressRing}>
+          <svg viewBox="0 0 100 100">
+            <circle
+              cx="50"
+              cy="50"
+              r="45"
+              fill="none"
+              stroke="#21262d"
+              strokeWidth="8"
+            />
+            <circle
+              cx="50"
+              cy="50"
+              r="45"
+              fill="none"
+              stroke="#3fb950"
+              strokeWidth="8"
+              strokeDasharray={`${progressPercent * 2.83} 283`}
+              strokeLinecap="round"
+              transform="rotate(-90 50 50)"
+              className={styles.progressCircle}
+            />
+          </svg>
+          <div className={styles.progressText}>
+            <span className={styles.progressCount}>{completedCount}/{plan.steps.length}</span>
+            <span className={styles.progressLabel}>Steps</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Steps Timeline */}
+      <div className={styles.stepsTimeline}>
+        {plan.steps.map((step, index) => {
+          const isCompleted = verifyResult?.stepsCompleted.includes(step.id);
+          const isCurrent = verifyResult?.nextStepId === step.id;
+          const isExpanded = expandedSteps.has(step.id);
+
+          return (
             <div
               key={step.id}
-              className={`${styles.step} ${step.dangerous ? styles.dangerous : ''} ${
-                verifyResult?.stepsCompleted.includes(step.id) ? styles.completed : ''
-              } ${verifyResult?.nextStepId === step.id ? styles.current : ''}`}
+              className={`
+                ${styles.stepCard}
+                ${isCompleted ? styles.completed : ''}
+                ${isCurrent ? styles.current : ''}
+                ${step.dangerous ? styles.dangerous : ''}
+              `}
             >
-              <div className={styles.stepHeader}>
-                <span className={styles.stepNumber}>{index + 1}</span>
-                <h4>{step.title}</h4>
-                {step.dangerous && <span className="badge badge-red">DANGEROUS</span>}
-                {verifyResult?.stepsCompleted.includes(step.id) && (
-                  <span className="badge badge-green">DONE</span>
+              {/* Step connector line */}
+              {index < plan.steps.length - 1 && (
+                <div className={`${styles.stepConnector} ${isCompleted ? styles.completedConnector : ''}`}></div>
+              )}
+
+              {/* Step number indicator */}
+              <div className={styles.stepIndicator}>
+                {isCompleted ? (
+                  <span className={styles.checkIcon}>✓</span>
+                ) : (
+                  <span className={styles.stepNum}>{index + 1}</span>
                 )}
               </div>
 
-              <p className={styles.stepDescription}>{step.description}</p>
-
-              {step.warning && (
-                <div className={styles.warning}>{step.warning}</div>
-              )}
-
-              <div className={styles.commands}>
-                {step.commands.map((cmd, i) => (
-                  <div key={i} className={styles.command}>
-                    <code>{cmd}</code>
-                    <button
-                      className={styles.copyBtn}
-                      onClick={() => copyCommand(cmd, `${step.id}-${i}`)}
-                    >
-                      {copiedId === `${step.id}-${i}` ? 'Copied!' : 'Copy'}
-                    </button>
+              {/* Step content */}
+              <div className={styles.stepBody}>
+                <div className={styles.stepHeader} onClick={() => toggleStep(step.id)}>
+                  <h4>{step.title}</h4>
+                  <div className={styles.stepMeta}>
+                    {step.dangerous && (
+                      <span className={styles.dangerTag}>⚠ Dangerous</span>
+                    )}
+                    <span className={styles.expandIcon}>{isExpanded ? '▼' : '▶'}</span>
                   </div>
-                ))}
-              </div>
+                </div>
 
-              <div className={styles.expected}>
-                <strong>Expected result:</strong> {step.expected}
-              </div>
+                <p className={styles.stepDescription}>{step.description}</p>
 
-              {step.undo.possible && (
-                <details className={styles.undoDetails}>
-                  <summary>How to undo this step</summary>
-                  <p>{step.undo.description}</p>
-                  {step.undo.commands.length > 0 && (
-                    <div className={styles.commands}>
-                      {step.undo.commands.map((cmd, i) => (
-                        <div key={i} className={styles.command}>
-                          <code>{cmd}</code>
-                          <button
-                            className={styles.copyBtn}
-                            onClick={() => copyCommand(cmd, `undo-${step.id}-${i}`)}
-                          >
-                            {copiedId === `undo-${step.id}-${i}` ? 'Copied!' : 'Copy'}
-                          </button>
-                        </div>
-                      ))}
+                {/* Expanded content */}
+                <div className={`${styles.stepExpanded} ${isExpanded ? styles.expanded : ''}`}>
+                  {step.warning && (
+                    <div className={styles.warningBox}>
+                      <span className={styles.warningIcon}>⚠</span>
+                      <p>{step.warning}</p>
                     </div>
                   )}
-                </details>
-              )}
+
+                  {/* Commands */}
+                  <div className={styles.commandsSection}>
+                    <h5>Commands to Run:</h5>
+                    {step.commands.map((cmd, cmdIdx) => (
+                      <div key={cmdIdx} className={styles.commandBlock}>
+                        <code>{cmd}</code>
+                        <button
+                          className={`${styles.copyBtn} ${copiedId === `${step.id}-${cmdIdx}` ? styles.copied : ''}`}
+                          onClick={() => copyCommand(cmd, `${step.id}-${cmdIdx}`)}
+                        >
+                          {copiedId === `${step.id}-${cmdIdx}` ? '✓ Copied' : 'Copy'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Expected result */}
+                  <div className={styles.expectedSection}>
+                    <h5>Expected Result:</h5>
+                    <p>{step.expected}</p>
+                  </div>
+
+                  {/* Undo instructions */}
+                  {step.undo.possible && (
+                    <details className={styles.undoSection}>
+                      <summary>How to undo this step</summary>
+                      <p>{step.undo.description}</p>
+                      {step.undo.commands.length > 0 && (
+                        <div className={styles.undoCommands}>
+                          {step.undo.commands.map((cmd, cmdIdx) => (
+                            <div key={cmdIdx} className={styles.commandBlock}>
+                              <code>{cmd}</code>
+                              <button
+                                className={styles.copyBtn}
+                                onClick={() => copyCommand(cmd, `undo-${step.id}-${cmdIdx}`)}
+                              >
+                                {copiedId === `undo-${step.id}-${cmdIdx}` ? '✓' : 'Copy'}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </details>
+                  )}
+                </div>
+              </div>
             </div>
-          ))}
-        </div>
-      </section>
+          );
+        })}
+      </div>
 
       {/* Reflog Recovery Fallback */}
       {plan.reflogRecovery && (
-        <section className={styles.reflogFallback}>
-          <h3>Emergency Recovery (Reflog)</h3>
+        <div className={styles.reflogRecoverySection}>
+          <div className={styles.recoveryHeader}>
+            <span className={styles.recoveryIcon}>🆘</span>
+            <h4>Emergency Recovery (Reflog)</h4>
+          </div>
           <p>{plan.reflogRecovery.description}</p>
-          <div className={styles.command}>
+          <div className={styles.commandBlock}>
             <code>{plan.reflogRecovery.recoveryCommand}</code>
             <button
               className={styles.copyBtn}
               onClick={() => copyCommand(plan.reflogRecovery!.recoveryCommand, 'reflog-recovery')}
             >
-              {copiedId === 'reflog-recovery' ? 'Copied!' : 'Copy'}
+              {copiedId === 'reflog-recovery' ? '✓' : 'Copy'}
             </button>
           </div>
-        </section>
+        </div>
       )}
 
       {/* Verification Section */}
-      <section className={styles.verifySection}>
-        <h3>Verify Progress</h3>
-        <p>After running some steps, generate a new snapshot and upload it to verify progress.</p>
+      <div className={styles.verificationSection}>
+        <h4>Verify Your Progress</h4>
+        <p>After running some steps, generate a new snapshot and upload it to verify your progress.</p>
 
-        <div className={styles.verifyForm}>
-          <div className={styles.fileInput}>
+        <div className={styles.verifyUpload}>
+          <label className={styles.uploadArea}>
             <input
               type="file"
               accept=".json"
               onChange={(e) => setVerifyFile(e.target.files?.[0] || null)}
-              id="verify-file"
             />
-            <label htmlFor="verify-file" className={styles.fileLabel}>
-              {verifyFile ? verifyFile.name : 'Choose snapshot file...'}
-            </label>
-          </div>
+            <span className={styles.uploadIcon}>📁</span>
+            <span className={styles.uploadText}>
+              {verifyFile ? verifyFile.name : 'Drop snapshot.json or click to browse'}
+            </span>
+          </label>
           <button
-            className="btn btn-primary"
+            className={`${styles.verifyBtn} ${verifying ? styles.verifying : ''}`}
             onClick={handleVerify}
             disabled={!verifyFile || verifying}
           >
@@ -794,24 +1284,24 @@ function RecoveryPlanTab({
         </div>
 
         {verifyResult && (
-          <div className={`${styles.verifyResult} ${verifyResult.issueResolved ? styles.resolved : ''}`}>
+          <div className={`${styles.verifyResultPanel} ${verifyResult.issueResolved ? styles.resolved : ''}`}>
             {verifyResult.issueResolved ? (
-              <div className={styles.successMessage}>
-                <span className={styles.successIcon}>✓</span>
-                <h4>Issue Resolved!</h4>
+              <div className={styles.successResult}>
+                <span className={styles.successIcon}>🎉</span>
+                <h5>Issue Resolved!</h5>
                 <p>{verifyResult.guidance}</p>
               </div>
             ) : (
               <>
-                <h4>Progress Update</h4>
-                {verifyResult.stepsCompleted.length > 0 && (
-                  <p className={styles.progressText}>
-                    Completed: {verifyResult.stepsCompleted.length} step(s)
-                  </p>
-                )}
+                <div className={styles.resultHeader}>
+                  <h5>Progress Update</h5>
+                  {completedCount > 0 && (
+                    <span className={styles.completedBadge}>{completedCount} steps completed</span>
+                  )}
+                </div>
                 {verifyResult.remainingIssues.length > 0 && (
                   <div className={styles.remainingIssues}>
-                    <strong>Still to address:</strong>
+                    <h6>Remaining Issues:</h6>
                     <ul>
                       {verifyResult.remainingIssues.map((issue, i) => (
                         <li key={i}>{issue}</li>
@@ -824,131 +1314,252 @@ function RecoveryPlanTab({
             )}
           </div>
         )}
-      </section>
+      </div>
     </div>
   );
 }
 
 // ============================================
-// SPOONOS TRACE TAB
+// SPOONOS PIPELINE TAB - Visual Flow
 // ============================================
-function SpoonOSTraceTab({
+function SpoonOSPipelineTab({
   traces,
   signals,
 }: {
   traces: Array<{ stage: string; output: unknown; createdAt?: string }>;
   signals: Signals | null;
 }) {
-  // SpoonOS pipeline stages
-  const stages = [
-    { id: 'collector', name: 'Collector', desc: 'Extract signals from snapshot' },
-    { id: 'classifier', name: 'Classifier', desc: 'Classify issue type and risk' },
-    { id: 'visual_explainer', name: 'Visual Explainer', desc: 'Generate contextual explanations' },
-    { id: 'planner', name: 'Planner', desc: 'Create recovery plan' },
-    { id: 'verifier', name: 'Verifier', desc: 'Verify progress after actions' },
+  const [selectedStage, setSelectedStage] = useState<string | null>(null);
+
+  // SpoonOS Graph Pipeline Stages
+  const pipelineStages = [
+    { id: 'detect_issue', name: 'Issue Detection', icon: '🔍', desc: 'Identify issue type from snapshot' },
+    { id: 'build_graph', name: 'Graph Builder', icon: '📊', desc: 'Build repository dependency graph' },
+    { id: 'extract_conflicts', name: 'Conflict Extractor', icon: '⚔', desc: 'Parse and analyze conflict blocks' },
+    { id: 'collect_signals', name: 'Signal Collector', icon: '📡', desc: 'Gather recovery signals' },
+    { id: 'generate_analysis', name: 'Analysis Generator', icon: '🧠', desc: 'Generate AI-powered analysis' },
   ];
 
   const getStageStatus = (stageId: string) => {
     const trace = traces.find(t => t.stage === stageId);
-    if (trace) return 'completed';
-    return 'pending';
+    return trace ? 'completed' : 'pending';
   };
 
   const getTraceForStage = (stageId: string) => {
     return traces.find(t => t.stage === stageId);
   };
 
+  // Calculate pipeline progress
+  const completedStages = pipelineStages.filter(s => getStageStatus(s.id) === 'completed').length;
+  const progressPercent = (completedStages / pipelineStages.length) * 100;
+
   return (
-    <div className={styles.traceLayout}>
-      {/* Pipeline Visualization */}
-      <section className={styles.pipelineSection}>
-        <h3>SpoonOS Agent Pipeline</h3>
-        <div className={styles.pipeline}>
-          {stages.map((stage, index) => {
+    <div className={styles.pipelineContainer}>
+      {/* Pipeline Header */}
+      <div className={styles.pipelineHeader}>
+        <div className={styles.pipelineTitle}>
+          <span className={styles.spoonLogo}>⚙</span>
+          <div>
+            <h3>SpoonOS Graph Pipeline</h3>
+            <p>AI-powered analysis using StateGraph architecture</p>
+          </div>
+        </div>
+        <div className={styles.pipelineProgress}>
+          <div className={styles.progressBar}>
+            <div className={styles.progressFill} style={{ width: `${progressPercent}%` }}></div>
+          </div>
+          <span className={styles.progressLabel}>{completedStages}/{pipelineStages.length} stages</span>
+        </div>
+      </div>
+
+      {/* Visual Pipeline Flow */}
+      <div className={styles.pipelineFlow}>
+        <svg className={styles.flowSvg} viewBox="0 0 900 150">
+          <defs>
+            <linearGradient id="flowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#58a6ff" />
+              <stop offset="50%" stopColor="#a371f7" />
+              <stop offset="100%" stopColor="#3fb950" />
+            </linearGradient>
+            <filter id="nodeGlow">
+              <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+
+          {/* Flow line */}
+          <path
+            d="M 80 75 L 820 75"
+            fill="none"
+            stroke="#21262d"
+            strokeWidth="4"
+          />
+          <path
+            d={`M 80 75 L ${80 + (740 * progressPercent / 100)} 75`}
+            fill="none"
+            stroke="url(#flowGradient)"
+            strokeWidth="4"
+            className={styles.flowPath}
+          />
+
+          {/* Stage nodes */}
+          {pipelineStages.map((stage, idx) => {
+            const x = 80 + idx * 185;
             const status = getStageStatus(stage.id);
+            const isActive = selectedStage === stage.id;
+
             return (
-              <div key={stage.id} className={styles.pipelineStage}>
-                <div className={`${styles.stageNode} ${styles[status]}`}>
-                  <span className={styles.stageNumber}>{index + 1}</span>
-                </div>
-                <div className={styles.stageInfo}>
-                  <span className={styles.stageName}>{stage.name}</span>
-                  <span className={styles.stageDesc}>{stage.desc}</span>
-                </div>
-                {index < stages.length - 1 && <div className={styles.stageConnector} />}
-              </div>
+              <g
+                key={stage.id}
+                onClick={() => setSelectedStage(isActive ? null : stage.id)}
+                style={{ cursor: 'pointer' }}
+                className={styles.stageGroup}
+              >
+                {/* Node background */}
+                <circle
+                  cx={x}
+                  cy={75}
+                  r={isActive ? 35 : 30}
+                  fill={status === 'completed' ? 'rgba(63, 185, 80, 0.2)' : 'rgba(33, 38, 45, 0.8)'}
+                  stroke={status === 'completed' ? '#3fb950' : '#30363d'}
+                  strokeWidth={isActive ? 3 : 2}
+                  filter={isActive ? 'url(#nodeGlow)' : undefined}
+                  className={styles.stageNode}
+                />
+
+                {/* Icon */}
+                <text x={x} y={80} textAnchor="middle" fontSize="20">
+                  {stage.icon}
+                </text>
+
+                {/* Status indicator */}
+                {status === 'completed' && (
+                  <circle cx={x + 20} cy={55} r={8} fill="#3fb950" stroke="#0d1117" strokeWidth="2">
+                    <animate attributeName="r" values="8;10;8" dur="2s" repeatCount="indefinite" />
+                  </circle>
+                )}
+
+                {/* Label */}
+                <text x={x} y={125} textAnchor="middle" fill="#c9d1d9" fontSize="11" fontWeight="500">
+                  {stage.name}
+                </text>
+              </g>
             );
           })}
-        </div>
-      </section>
 
-      {/* Trace Details */}
-      <section className={styles.traceDetails}>
-        <h3>Stage Outputs</h3>
-        {traces.length === 0 ? (
-          <div className={styles.emptyState}>
-            <p>No traces yet. Interact with the agent to see the pipeline in action.</p>
-          </div>
-        ) : (
-          <div className={styles.traceList}>
-            {stages.map((stage) => {
-              const trace = getTraceForStage(stage.id);
-              if (!trace) return null;
+          {/* Animated particles */}
+          {completedStages > 0 && (
+            <circle r="4" fill="#58a6ff">
+              <animateMotion
+                dur="3s"
+                repeatCount="indefinite"
+                path={`M 80 75 L ${80 + (740 * progressPercent / 100)} 75`}
+              />
+            </circle>
+          )}
+        </svg>
+      </div>
 
-              return (
-                <details key={stage.id} className={styles.traceItem} open={stage.id === 'collector'}>
-                  <summary className={styles.traceSummary}>
-                    <span className={styles.traceStage}>{stage.name}</span>
-                    <span className={styles.traceStatus}>completed</span>
-                  </summary>
-                  <div className={styles.traceContent}>
-                    <div className={styles.traceIO}>
-                      <div className={styles.traceOutput}>
-                        <h5>Output</h5>
-                        <pre>{JSON.stringify(trace.output, null, 2)}</pre>
-                      </div>
-                    </div>
-                  </div>
-                </details>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      {/* Stage Details */}
+      <div className={styles.stageDetails}>
+        {pipelineStages.map((stage) => {
+          const trace = getTraceForStage(stage.id);
+          const isSelected = selectedStage === stage.id;
 
-      {/* Current Signals */}
+          return (
+            <div
+              key={stage.id}
+              className={`${styles.stageCard} ${trace ? styles.completed : styles.pending} ${isSelected ? styles.selected : ''}`}
+              onClick={() => setSelectedStage(isSelected ? null : stage.id)}
+            >
+              <div className={styles.stageCardHeader}>
+                <span className={styles.stageIcon}>{stage.icon}</span>
+                <div className={styles.stageInfo}>
+                  <h4>{stage.name}</h4>
+                  <p>{stage.desc}</p>
+                </div>
+                <span className={`${styles.stageStatus} ${trace ? styles.done : styles.waiting}`}>
+                  {trace ? '✓ Complete' : '○ Pending'}
+                </span>
+              </div>
+
+              {isSelected && trace && (
+                <div className={styles.stageOutput}>
+                  <h5>Output Data</h5>
+                  <pre>{JSON.stringify(trace.output, null, 2)}</pre>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Signals Dashboard */}
       {signals && (
-        <section className={styles.signalsSection}>
-          <h3>Current Signals</h3>
+        <div className={styles.signalsDashboard}>
+          <h4>Extracted Signals</h4>
           <div className={styles.signalsGrid}>
-            <div className={styles.signalCard}>
-              <span className={styles.signalLabel}>Primary Issue</span>
-              <span className={styles.signalValue}>{signals.primaryIssue}</span>
+            <div className={styles.signalTile}>
+              <span className={styles.signalIcon}>🎯</span>
+              <div className={styles.signalData}>
+                <span className={styles.signalLabel}>Primary Issue</span>
+                <span className={styles.signalValue}>{signals.primaryIssue}</span>
+              </div>
             </div>
-            <div className={styles.signalCard}>
-              <span className={styles.signalLabel}>Risk Level</span>
-              <span className={`${styles.signalValue} ${styles[signals.estimatedRisk]}`}>
-                {signals.estimatedRisk}
-              </span>
+
+            <div className={`${styles.signalTile} ${styles[signals.estimatedRisk]}`}>
+              <span className={styles.signalIcon}>⚠</span>
+              <div className={styles.signalData}>
+                <span className={styles.signalLabel}>Risk Level</span>
+                <span className={styles.signalValue}>{signals.estimatedRisk.toUpperCase()}</span>
+              </div>
             </div>
-            <div className={styles.signalCard}>
-              <span className={styles.signalLabel}>Conflicts</span>
-              <span className={styles.signalValue}>{signals.conflictCount}</span>
+
+            <div className={styles.signalTile}>
+              <span className={styles.signalIcon}>⚔</span>
+              <div className={styles.signalData}>
+                <span className={styles.signalLabel}>Conflicts</span>
+                <span className={styles.signalValue}>{signals.conflictCount}</span>
+              </div>
             </div>
-            <div className={styles.signalCard}>
-              <span className={styles.signalLabel}>Detached HEAD</span>
-              <span className={styles.signalValue}>{signals.isDetachedHead ? 'Yes' : 'No'}</span>
+
+            <div className={styles.signalTile}>
+              <span className={styles.signalIcon}>📍</span>
+              <div className={styles.signalData}>
+                <span className={styles.signalLabel}>Detached HEAD</span>
+                <span className={styles.signalValue}>{signals.isDetachedHead ? 'Yes' : 'No'}</span>
+              </div>
             </div>
-            <div className={styles.signalCard}>
-              <span className={styles.signalLabel}>Rebase</span>
-              <span className={styles.signalValue}>{signals.isRebaseInProgress ? 'In Progress' : 'No'}</span>
+
+            <div className={styles.signalTile}>
+              <span className={styles.signalIcon}>🔄</span>
+              <div className={styles.signalData}>
+                <span className={styles.signalLabel}>Rebase Status</span>
+                <span className={styles.signalValue}>{signals.isRebaseInProgress ? 'In Progress' : 'None'}</span>
+              </div>
             </div>
-            <div className={styles.signalCard}>
-              <span className={styles.signalLabel}>Branch</span>
-              <span className={styles.signalValue}>{signals.currentBranch}</span>
+
+            <div className={styles.signalTile}>
+              <span className={styles.signalIcon}>🌿</span>
+              <div className={styles.signalData}>
+                <span className={styles.signalLabel}>Current Branch</span>
+                <span className={styles.signalValue}>{signals.currentBranch}</span>
+              </div>
             </div>
           </div>
-        </section>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {traces.length === 0 && (
+        <div className={styles.pipelineEmpty}>
+          <span className={styles.emptyIcon}>🔮</span>
+          <h4>Pipeline Ready</h4>
+          <p>Generate a recovery plan to see the SpoonOS pipeline in action.</p>
+        </div>
       )}
     </div>
   );
@@ -957,16 +1568,6 @@ function SpoonOSTraceTab({
 // ============================================
 // HELPER FUNCTIONS
 // ============================================
-function getFileName(path: string): string {
-  return path.split('/').pop() || path;
-}
-
-function getFilePath(path: string): string {
-  const parts = path.split('/');
-  if (parts.length <= 1) return '';
-  return parts.slice(0, -1).join('/');
-}
-
 function getRiskColor(risk: string): string {
   switch (risk) {
     case 'low': return 'green';
