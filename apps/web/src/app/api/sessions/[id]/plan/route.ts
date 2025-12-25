@@ -295,7 +295,7 @@ export async function POST(
 
       // Stage 1: Detect Issue (SpoonOS: detect_issue)
       const detectStart = Date.now();
-      const signals = collectSignals(snapshot);
+    const signals = collectSignals(snapshot);
       const issueType = signals.primaryIssue || 'unknown';
       const riskLevel = signals.estimatedRisk || 'medium';
       await saveTrace(sessionId, 'detect_issue', snapshotRecord.id, { snapshot: 'parsed' }, { issueType, riskLevel }, detectStart);
@@ -323,51 +323,51 @@ export async function POST(
       console.log(`[WEB:PLAN:${requestId}]    ✓ collect_signals`);
 
       // Stage 5: Classify Issue (refinement)
-      const classifierStart = Date.now();
-      const classification = await classifyIssue(signals);
-      await saveTrace(sessionId, 'classifier', snapshotRecord.id, signals, classification, classifierStart);
+    const classifierStart = Date.now();
+    const classification = await classifyIssue(signals);
+    await saveTrace(sessionId, 'classifier', snapshotRecord.id, signals, classification, classifierStart);
       console.log(`[WEB:PLAN:${requestId}]    ✓ classifier`);
 
-      // Update signals with classification results
-      const classifiedSignals = {
-        ...signals,
-        primaryIssue: classification.primaryIssue,
-        secondaryIssues: classification.secondaryIssues,
-        estimatedRisk: classification.estimatedRisk,
-      };
+    // Update signals with classification results
+    const classifiedSignals = {
+      ...signals,
+      primaryIssue: classification.primaryIssue,
+      secondaryIssues: classification.secondaryIssues,
+      estimatedRisk: classification.estimatedRisk,
+    };
 
       // Stage 6: Generate Analysis (SpoonOS: generate_analysis)
-      const plannerStart = Date.now();
+    const plannerStart = Date.now();
       plan = await generatePlan(snapshot, classifiedSignals, dangerousAllowed);
       await saveTrace(sessionId, 'generate_analysis', snapshotRecord.id, classifiedSignals, plan, plannerStart);
       console.log(`[WEB:PLAN:${requestId}]    ✓ generate_analysis: ${plan.steps.length} steps`);
 
-      // Delete existing analysis for this snapshot (allows regeneration)
-      await deleteAnalysisBySnapshotId(snapshotRecord.id);
+    // Delete existing analysis for this snapshot (allows regeneration)
+    await deleteAnalysisBySnapshotId(snapshotRecord.id);
 
-      // Save analysis and plan steps to database
+    // Save analysis and plan steps to database
       analysis = await createAnalysis({
-        gitSessionId: sessionId,
-        snapshotId: snapshotRecord.id,
-        issueType: plan.issueType,
-        summary: plan.issueSummary,
-      });
+      gitSessionId: sessionId,
+      snapshotId: snapshotRecord.id,
+      issueType: plan.issueType,
+      summary: plan.issueSummary,
+    });
       console.log(`[WEB:PLAN:${requestId}] ✅ Analysis saved: ${analysis.id}`);
 
-      // Create plan steps
+    // Create plan steps
       console.log(`[WEB:PLAN:${requestId}] 💾 Storing ${plan.steps.length} plan steps from TypeScript fallback...`);
-      for (let i = 0; i < plan.steps.length; i++) {
-        const step = plan.steps[i];
-        await createPlanStep({
-          analysisId: analysis.id,
-          index: i,
-          title: step.title,
-          rationale: step.description,
-          commandsJson: step.commands,
-          verifyJson: { expected: step.expected },
-          undoJson: step.undo,
-          dangerLevel: step.dangerous ? 'dangerous' : 'safe',
-        });
+    for (let i = 0; i < plan.steps.length; i++) {
+      const step = plan.steps[i];
+      await createPlanStep({
+        analysisId: analysis.id,
+        index: i,
+        title: step.title,
+        rationale: step.description,
+        commandsJson: step.commands,
+        verifyJson: { expected: step.expected },
+        undoJson: step.undo,
+        dangerLevel: step.dangerous ? 'dangerous' : 'safe',
+      });
       }
 
       console.log(`[WEB:PLAN:${requestId}] ✅ Plan generated from TypeScript fallback (NO AI)`);

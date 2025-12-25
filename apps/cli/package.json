@@ -1,46 +1,24 @@
 {
   "name": "@azizbekdevuz/gitguard-cli",
-  "version": "1.0.0",
-  "description": "GitGuard CLI - Safe git recovery helper for merge conflicts, detached HEAD, and rebase issues",
+  "version": "1.0.1",
   "type": "module",
   "bin": {
     "gitguard": "./dist/index.js"
   },
   "main": "./dist/index.js",
-  "files": [
-    "dist/**/*"
-  ],
-  "keywords": [
-    "git",
-    "cli",
-    "merge-conflict",
-    "rebase",
-    "detached-head",
-    "git-recovery",
-    "gitguard"
-  ],
-  "author": "",
-  "license": "MIT",
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
-    "start": "node dist/index.js",
-    "prepublishOnly": "npm run build"
+    "start": "node dist/index.js"
   },
   "dependencies": {
-    "@gitguard/schema": "^1.0.0",
+    "@azizbekdevuz/gitguard-schema": "^1.0.0",
     "commander": "^13.0.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2"
-  },
-  "engines": {
-    "node": ">=20.0.0"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

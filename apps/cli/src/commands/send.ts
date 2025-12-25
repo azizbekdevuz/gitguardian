@@ -1,4 +1,4 @@
-import { SnapshotV1Schema, type SnapshotV1 } from '@gitguard/schema';
+import { SnapshotV1Schema, type SnapshotV1 } from '@azizbekdevuz/gitguard-schema';
 import { collectGitInfo } from '../collectors/git-info.js';
 import { parseStatus } from '../parsers/status-parser.js';
 import { parseBranches } from '../parsers/branch-parser.js';

@@ -1,4 +1,4 @@
-import type { ReflogEntry } from '@gitguard/schema';
+import type { ReflogEntry } from '@azizbekdevuz/gitguard-schema';
 
 /**
  * Parse git reflog output.

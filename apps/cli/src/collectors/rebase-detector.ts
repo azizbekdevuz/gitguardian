@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { RebaseState } from '@gitguard/schema';
+import type { RebaseState } from '@azizbekdevuz/gitguard-schema';
 import { execGit } from '../utils/exec.js';
 
 /**
