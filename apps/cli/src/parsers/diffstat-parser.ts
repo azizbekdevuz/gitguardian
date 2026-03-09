@@ -1,4 +1,4 @@
-import type { DiffStat } from '@gitguard/schema';
+import type { DiffStat } from '@azizbekdevuz/gitguard-schema';
 
 /**
  * Parse git diff --numstat output into structured diff stats.

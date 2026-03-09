@@ -1,6 +1,6 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { UnmergedFile, ConflictBlock } from '@gitguard/schema';
+import type { UnmergedFile, ConflictBlock } from '@azizbekdevuz/gitguard-schema';
 
 const MAX_BLOCKS_PER_FILE = 3;
 const CONTEXT_LINES = 10;

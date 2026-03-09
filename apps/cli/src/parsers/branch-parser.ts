@@ -1,4 +1,4 @@
-import type { BranchInfo } from '@gitguard/schema';
+import type { BranchInfo } from '@azizbekdevuz/gitguard-schema';
 import type { StatusInfo } from './status-parser.js';
 
 /**

@@ -1,88 +1,111 @@
 # GitGuard CLI
 
-Command-line tool for capturing and analyzing Git repository state.
+[![npm version](https://img.shields.io/npm/v/@azizbekdevuz/gitguard-cli.svg)](https://www.npmjs.com/package/@azizbekdevuz/gitguard-cli)
+[![npm downloads](https://img.shields.io/npm/dm/@azizbekdevuz/gitguard-cli.svg)](https://www.npmjs.com/package/@azizbekdevuz/gitguard-cli)
 
-## Installation & Usage
+Command-line tool for capturing and analyzing Git repository state. Part of [GitGuard Agent](https://github.com/azizbekdevuz/gitguardian)—a cross-platform system that helps developers safely recover from merge conflicts, detached HEAD, and rebase-in-progress scenarios.
 
-Since this is a local package (not published to npm), use one of these methods:
+**Read-only by design**: Snapshot generation never modifies your repository.
 
-### Method 1: Using pnpm (Recommended - Easiest)
+## Requirements
 
-From the **project root**:
+- **Node.js** 20+
+- **Git** repository (run from within a repo)
+
+## Installation
+
 ```bash
-# Build the CLI first (one time)
-pnpm build:cli
-
-# Then use via pnpm (use -- to pass arguments)
-pnpm --filter @gitguard/cli -- snapshot --pretty > snapshot.json
-# pnpm --filter @gitguard/cli -- send
-# pnpm --filter @gitguard/cli -- send --open
+npm install -g @azizbekdevuz/gitguard-cli
 ```
 
-### Method 2: Direct Node Execution (After Building)
+Or with pnpm:
 
 ```bash
-# Build first (one time)
-pnpm build:cli
-
-# Run directly from project root
-node apps/cli/dist/index.js snapshot --pretty > snapshot.json
-# node apps/cli/dist/index.js send
-# node apps/cli/dist/index.js send --open
+pnpm add -g @azizbekdevuz/gitguard-cli
 ```
 
-### Method 3: Global Link (For Development)
+Or with yarn:
 
 ```bash
-# From project root
-pnpm build:cli
-cd apps/cli
-pnpm link --global
+yarn global add @azizbekdevuz/gitguard-cli
+```
 
-# Now you can use `gitguard` from anywhere on your system
+## Quick Start
+
+```bash
+# Generate a snapshot (output to stdout)
 gitguard snapshot --pretty > snapshot.json
-gitguard send
+
+# Send snapshot to GitGuard API and open incident room in browser
 gitguard send --open
-```
-
-### Method 4: Create an Alias (PowerShell)
-
-Add to your PowerShell profile (`$PROFILE`):
-```powershell
-function gitguard { node D:\Workplace\Web\gitguardian\apps\cli\dist\index.js $args }
-```
-
-Then use normally:
-```bash
-gitguard snapshot --pretty > snapshot.json
-gitguard send
 ```
 
 ## Commands
 
 ### `gitguard snapshot`
 
-Generate a read-only snapshot of your repository state.
+Generate a read-only snapshot of your repository state. Captures branch info, status, recent commits, reflog, conflict details, rebase state, and diff stats.
 
 ```bash
-gitguard snapshot                    # Output to stdout
-gitguard snapshot -o snapshot.json  # Save to file
+gitguard snapshot                    # Output JSON to stdout
+gitguard snapshot -o snapshot.json   # Write to file
 gitguard snapshot --pretty           # Pretty-print JSON
 ```
 
+| Option | Description |
+|--------|-------------|
+| `-o, --output <file>` | Write snapshot to file instead of stdout |
+| `--pretty` | Pretty-print JSON output |
+| `-h, --help` | Display help |
+
 ### `gitguard send`
 
-Capture repository state and send to GitGuard for AI analysis.
+Capture repository state and send it to the GitGuard API for AI analysis. Returns an incident room URL with diagnosis and recovery plan.
 
 ```bash
 gitguard send                        # Send to default API (localhost:3000)
 gitguard send -u https://api.example.com  # Custom API URL
-gitguard send --open                # Open incident room in browser
+gitguard send --open                 # Open incident room in browser after upload
 ```
 
-## Requirements
+| Option | Description |
+|--------|-------------|
+| `-u, --api-url <url>` | GitGuard API URL (default: `http://localhost:3000`) |
+| `-o, --open` | Open the incident room in browser after upload |
+| `-h, --help` | Display help |
 
-- Node.js 18+
-- Git repository with issues (conflicts, detached HEAD, rebase in progress)
-- Build the CLI first: `pnpm build:cli` or `cd apps/cli && pnpm build`
+**Environment variable**: `GITGUARD_API_URL` overrides the default API URL when set.
 
+## What the Snapshot Includes
+
+- Branch info (head, tracking, ahead/behind)
+- Detached HEAD detection
+- Rebase state (in progress, onto, etc.)
+- Unmerged files with conflict snippets (up to 5 files for `snapshot`, up to 10 for `send`; 3 blocks per file)
+- Staged, modified, and untracked files
+- Recent commit log and reflog
+- Commit graph for history visualization
+- Diff stats for changed files
+- Merge metadata (MERGE_HEAD, merge message)
+
+## Development
+
+If you're working from the [monorepo](https://github.com/azizbekdevuz/gitguardian):
+
+```bash
+# From project root
+pnpm build:cli
+pnpm --filter @gitguard/cli -- snapshot --pretty > snapshot.json
+
+# Or link globally for development
+cd apps/cli && pnpm link --global
+gitguard snapshot --pretty
+```
+
+## Related Packages
+
+- [@azizbekdevuz/gitguard-schema](https://www.npmjs.com/package/@azizbekdevuz/gitguard-schema) – Shared Zod schemas (SnapshotV1, PlanV1)
+
+## License
+
+MIT

@@ -1,4 +1,4 @@
-import type { LogEntry } from '@gitguard/schema';
+import type { LogEntry } from '@azizbekdevuz/gitguard-schema';
 
 /**
  * Parse git log --oneline --decorate output.

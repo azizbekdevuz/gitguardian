@@ -6,7 +6,7 @@ import { sendCommand } from './commands/send.js';
 program
   .name('gitguard')
   .description('GitGuard Agent - Safe git recovery helper')
-  .version('1.0.0');
+  .version('1.0.2');
 
 program
   .command('snapshot')
