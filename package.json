@@ -4,17 +4,17 @@
   "scripts": {
     "build": "pnpm -r build",
     "build:web": "pnpm --filter @gitguard/web build",
-    "build:cli": "pnpm --filter @gitguard/cli build",
+    "build:cli": "pnpm --filter @azizbekdevuz/gitguard-schema build && pnpm --filter @azizbekdevuz/gitguard-cli build",
     "start": "pnpm start:web & pnpm start:cli",
     "start:web": "pnpm --filter @gitguard/web start",
     "dev:web": "pnpm --filter @gitguard/web dev",
-    "dev:cli": "pnpm --filter @gitguard/cli dev",
+    "dev:cli": "pnpm --filter @azizbekdevuz/gitguard-cli dev",
     "dev": "pnpm dev:web & pnpm dev:cli",
     "typecheck": "pnpm -r typecheck",
     "db:generate": "pnpm --filter @gitguard/web db:generate",
     "db:push": "pnpm --filter @gitguard/web db:push",
     "db:studio": "pnpm --filter @gitguard/web db:studio",
-    "cli": "pnpm --filter @gitguard/cli --"
+    "cli": "pnpm --filter @azizbekdevuz/gitguard-cli --"
   },
   "devDependencies": {
     "typescript": "^5.7.2"
