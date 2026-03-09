@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SnapshotV1Schema } from '@gitguard/schema';
+import { SnapshotV1Schema } from '@azizbekdevuz/gitguard-schema';
 import { createSession, createSnapshot, updateSessionStatus, saveTrace, createAnalysis, createConflictFile, createConflictHunk, createPlanStep } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { createHash } from 'crypto';

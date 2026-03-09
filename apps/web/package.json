@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.4",
-    "@gitguard/schema": "workspace:*",
+    "@azizbekdevuz/gitguard-schema": "workspace:*",
     "@prisma/client": "^6.1.0",
     "@radix-ui/react-slot": "^1.2.4",
     "bcryptjs": "^2.4.3",

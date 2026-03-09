@@ -1,5 +1,5 @@
-import type { SnapshotV1, Signals } from '@gitguard/schema';
-import { SignalsSchema } from '@gitguard/schema';
+import type { SnapshotV1, Signals } from '@azizbekdevuz/gitguard-schema';
+import { SignalsSchema } from '@azizbekdevuz/gitguard-schema';
 
 /**
  * Collector stage: Normalize snapshot into signals.

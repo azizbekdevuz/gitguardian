@@ -1,5 +1,5 @@
-import type { SnapshotV1, Signals, PlanV1 } from '@gitguard/schema';
-import { PlanV1Schema } from '@gitguard/schema';
+import type { SnapshotV1, Signals, PlanV1 } from '@azizbekdevuz/gitguard-schema';
+import { PlanV1Schema } from '@azizbekdevuz/gitguard-schema';
 import { callLLMWithJSON } from '../llm';
 
 /**

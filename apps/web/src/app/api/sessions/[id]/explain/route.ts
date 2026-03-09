@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SnapshotV1Schema } from '@gitguard/schema';
+import { SnapshotV1Schema } from '@azizbekdevuz/gitguard-schema';
 import { getSession, getLatestSnapshot, saveTrace } from '@/lib/db';
 import { explainConflict, explainState } from '@/lib/agent/explainer';
 

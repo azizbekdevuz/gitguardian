@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import styles from './page.module.css';
 import { Header } from '@/components/Header';
-import type { SnapshotV1, PlanV1, Signals, UnmergedFile, ConflictBlock } from '@gitguard/schema';
+import type { SnapshotV1, PlanV1, Signals, UnmergedFile, ConflictBlock } from '@azizbekdevuz/gitguard-schema';
 import {
   Search, BarChart3, Map, Settings, Check, AlertTriangle,
   RefreshCw, MapPin, FileText, Brain, Sparkles, Zap,

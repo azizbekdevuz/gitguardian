@@ -1,5 +1,5 @@
-import type { SnapshotV1, PlanV1, VerificationResult, Signals } from '@gitguard/schema';
-import { VerificationResultSchema } from '@gitguard/schema';
+import type { SnapshotV1, PlanV1, VerificationResult, Signals } from '@azizbekdevuz/gitguard-schema';
+import { VerificationResultSchema } from '@azizbekdevuz/gitguard-schema';
 import { collectSignals } from './collector';
 import { callLLMWithJSON } from '../llm';
 

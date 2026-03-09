@@ -1,5 +1,5 @@
-import type { Signals, IssueType, RiskLevel } from '@gitguard/schema';
-import { IssueTypeSchema, RiskLevelSchema } from '@gitguard/schema';
+import type { Signals, IssueType, RiskLevel } from '@azizbekdevuz/gitguard-schema';
+import { IssueTypeSchema, RiskLevelSchema } from '@azizbekdevuz/gitguard-schema';
 import { callLLMWithJSON } from '../llm';
 import { z } from 'zod';
 

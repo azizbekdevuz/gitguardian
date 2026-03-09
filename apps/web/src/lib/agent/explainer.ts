@@ -1,4 +1,4 @@
-import type { SnapshotV1, ConflictBlock, UnmergedFile } from '@gitguard/schema';
+import type { SnapshotV1, ConflictBlock, UnmergedFile } from '@azizbekdevuz/gitguard-schema';
 import { callLLM } from '../llm';
 
 export interface ConflictExplanation {

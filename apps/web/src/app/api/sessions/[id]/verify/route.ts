@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SnapshotV1Schema } from '@gitguard/schema';
+import { SnapshotV1Schema } from '@azizbekdevuz/gitguard-schema';
 import { createSnapshot, getLatestAnalysis, getTraces, saveTrace } from '@/lib/db';
 
 const AGENT_URL = process.env.AGENT_URL || 'http://localhost:8000';
