@@ -1,6 +1,13 @@
 {
-  "name": "@gitguard/schema",
+  "name": "@azizbekdevuz/gitguard-schema",
   "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/azizbekdevuz/gitguardian.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
